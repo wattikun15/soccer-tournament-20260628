@@ -46,16 +46,16 @@ export const initialMembers = [
 
 
 export const initialMatches = [
-  { id: 'm1', stage: 'league', date: '6/28 13:00', homeId: 't1', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
-  { id: 'm2', stage: 'league', date: '6/28 13:30', homeId: 't3', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
-  { id: 'm3', stage: 'league', date: '6/28 14:00', homeId: 't1', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
-  { id: 'm4', stage: 'league', date: '6/28 14:30', homeId: 't2', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
-  { id: 'm5', stage: 'league', date: '6/28 15:00', homeId: 't1', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
-  { id: 'm6', stage: 'league', date: '6/28 15:30', homeId: 't2', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't4', refereePlayerId: null, goals: [] },
-  { id: 'm7', stage: 'semifinal', date: '6/28 16:00', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 1', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
-  { id: 'm8', stage: 'semifinal', date: '6/28 16:00', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 2', refereeTeamId: 't4', refereePlayerId: null, goals: [] },
-  { id: 'm9', stage: 'third_place', date: '6/28 16:30', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '3位決定戦', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
-  { id: 'm10', stage: 'final', date: '6/28 16:30', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
+  { id: 'm1', stage: 'league', date: '13:15', homeId: 't2', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第1試合', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
+  { id: 'm2', stage: 'league', date: '13:35', homeId: 't1', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第2試合', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
+  { id: 'm3', stage: 'league', date: '13:53', homeId: 't4', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第3試合', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
+  { id: 'm4', stage: 'league', date: '14:11', homeId: 't2', awayId: 't1', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第4試合', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
+  { id: 'm5', stage: 'league', date: '14:29', homeId: 't2', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第5試合', refereeTeamId: 't4', refereePlayerId: null, goals: [] },
+  { id: 'm6', stage: 'league', date: '14:47', homeId: 't4', awayId: 't1', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第6試合', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
+  { id: 'm7', stage: 'semifinal', date: '15:07', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 第1試合', refereeTeamId: null, refereePlayerId: null, goals: [] },
+  { id: 'm8', stage: 'semifinal', date: '15:32', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 第2試合', refereeTeamId: null, refereePlayerId: null, goals: [] },
+  { id: 'm9', stage: 'third_place', date: '15:57', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '三位決定戦', refereeTeamId: null, refereePlayerId: null, goals: [] },
+  { id: 'm10', stage: 'final', date: '16:22', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝戦', refereeTeamId: null, refereePlayerId: null, goals: [] },
 ];
 
 // Helper to calculate standings
@@ -109,3 +109,32 @@ export const calculateStandings = (teams, matches) => {
     return b.goalsFor - a.goalsFor;
   });
 };
+
+export const initialTimetable = [
+  { time: '12:45', label: '集合(代表の方)', detail: 'メンバー表の提出、背番号、ユニフォームの確認' },
+  { time: '13:00 - 13:05', label: '開場・準備・アップ', duration: '5m' },
+  { time: '13:05 - 13:10', label: '開会式', duration: '5m' },
+  { time: '13:10 - 13:15', label: '予選 第1試合【準備】', duration: '5m', detail: 'メンバーチェック含む' },
+  { time: '13:15 - 13:30', label: '予選 第1試合 (GA vs CISCO)', duration: '15m', detail: '前半7分 - ハーフタイム1分 - 後半7分' },
+  { time: '13:30 - 13:35', label: '予選 第2試合【準備】', duration: '5m' },
+  { time: '13:35 - 13:50', label: '予選 第2試合 (ミナミダイ vs ケン)', duration: '15m' },
+  { time: '13:50 - 13:53', label: '予選 第3試合【準備】', duration: '3m' },
+  { time: '13:53 - 14:08', label: '予選 第3試合 (CISCO vs ケン)', duration: '15m' },
+  { time: '14:08 - 14:11', label: '予選 第4試合【準備】', duration: '3m' },
+  { time: '14:11 - 14:26', label: '予選 第4試合 (GA vs ミナミダイ)', duration: '15m' },
+  { time: '14:26 - 14:29', label: '予選 第5試合【準備】', duration: '3m' },
+  { time: '14:29 - 14:44', label: '予選 第5試合 (GA vs ケン)', duration: '15m' },
+  { time: '14:44 - 14:47', label: '予選 第6試合【準備】', duration: '3m' },
+  { time: '14:47 - 15:02', label: '予選 第6試合 (CISCO vs ミナミダイ)', duration: '15m' },
+  { time: '15:02 - 15:04', label: '写真撮影', duration: '2m', detail: '区、協会への報告、HP用' },
+  { time: '15:04 - 15:07', label: '準決勝 第1試合【準備】', duration: '3m' },
+  { time: '15:07 - 15:29', label: '準決勝 第1試合', duration: '22m', detail: '予選2位 vs 予選3位 (前10分-休2分-後10分)' },
+  { time: '15:29 - 15:32', label: '準決勝 第2試合【準備】', duration: '3m' },
+  { time: '15:32 - 15:54', label: '準決勝 第2試合', duration: '22m', detail: '予選1位 vs 予選4位' },
+  { time: '15:54 - 15:57', label: '三位決定戦【準備】', duration: '3m' },
+  { time: '15:57 - 16:19', label: '三位決定戦', duration: '22m', detail: '準決1敗者 vs 準決2敗者' },
+  { time: '16:19 - 16:22', label: '決勝戦【準備】', duration: '3m' },
+  { time: '16:22 - 16:44', label: '決勝戦', duration: '22m', detail: '準決1勝者 vs 準決2勝者' },
+  { time: '16:44 - 16:50', label: '予備時間', duration: '6m' },
+  { time: '16:50 - 17:00', label: '片づけ・撤収', duration: '10m' }
+];

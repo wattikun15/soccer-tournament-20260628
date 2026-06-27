@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2 } from 'lucide-react';
-import { initialTeams, initialMatches, initialMembers, calculateStandings } from './data';
+import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable } from './data';
 import './index.css';
 
 function App() {
@@ -86,7 +86,6 @@ function App() {
 
   const updateMatchTeams = (homeId, awayId) => {
     if (!selectedMatch) return;
-    // reset goals if teams change
     setSelectedMatch({
       ...selectedMatch,
       homeId: homeId || null,
@@ -218,6 +217,35 @@ function App() {
                     {getTeam(selectedMatch.awayId)?.emoji || '❓'}
                   </div>
                   <div className="team-name">{getTeam(selectedMatch.awayId)?.name || '未定'}</div>
+                </div>
+              </div>
+
+              {/* Match Label & Date Selector */}
+              <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
+                <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>試合情報の編集</h4>
+                <div style={{display: 'flex', gap: 16}}>
+                  <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
+                    <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>試合名 (ラベル)</span>
+                    <input 
+                      type="text" 
+                      value={selectedMatch.label || ''} 
+                      onChange={e => setSelectedMatch({ ...selectedMatch, label: e.target.value })}
+                      placeholder="例: 第1試合 / 予選A"
+                      className="edit-input"
+                      style={{width: '100%'}}
+                    />
+                  </div>
+                  <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
+                    <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>時間/日程</span>
+                    <input 
+                      type="text" 
+                      value={selectedMatch.date || ''} 
+                      onChange={e => setSelectedMatch({ ...selectedMatch, date: e.target.value })}
+                      placeholder="例: 13:00"
+                      className="edit-input"
+                      style={{width: '100%'}}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -378,7 +406,7 @@ function App() {
 }
 
 function ScheduleView({ matches, getTeam, getPlayer, onMatchClick }) {
-  const [stage, setStage] = useState('league');
+  const [stage, setStage] = useState('league'); // 'league', 'tournament', 'timetable'
 
   const displayedMatches = matches.filter(m => 
     stage === 'league' ? m.stage === 'league' : m.stage !== 'league'
@@ -399,22 +427,78 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick }) {
         >
           決勝トーナメント
         </div>
+        <div 
+          className={`tab ${stage === 'timetable' ? 'active' : ''}`}
+          onClick={() => setStage('timetable')}
+        >
+          タイムスケジュール
+        </div>
       </div>
 
-      <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
-        {displayedMatches.map(match => (
-          <MatchCard 
-            key={match.id} 
-            match={match} 
-            homeTeam={getTeam(match.homeId)} 
-            awayTeam={getTeam(match.awayId)} 
-            refereeTeam={getTeam(match.refereeTeamId)}
-            refereePlayer={getPlayer(match.refereePlayerId)}
-            getPlayer={getPlayer}
-            onClick={() => onMatchClick(match)}
-          />
-        ))}
-      </div>
+      {stage === 'timetable' ? (
+        <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+          <h3 style={{fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: 8, textAlign: 'center'}}>
+            大会当日 タイムスケジュール
+          </h3>
+          
+          <div className="glass-card" style={{padding: '20px 16px', cursor: 'default', display: 'flex', flexDirection: 'column', gap: 20}}>
+            {initialTimetable.map((event, index) => (
+              <div key={index} style={{display: 'flex', gap: 16, position: 'relative'}}>
+                {/* Line */}
+                {index !== initialTimetable.length - 1 && (
+                  <div style={{
+                    position: 'absolute',
+                    left: 6,
+                    top: 18,
+                    bottom: -18,
+                    width: 2,
+                    background: 'rgba(255,255,255,0.08)'
+                  }}></div>
+                )}
+                {/* Dot */}
+                <div style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  background: event.label.includes('試合') || event.label.includes('決勝') ? 'var(--accent-color)' : 'rgba(255,255,255,0.25)',
+                  border: '3px solid var(--bg-color)',
+                  zIndex: 2,
+                  marginTop: 3,
+                  flexShrink: 0
+                }}></div>
+                {/* Content */}
+                <div style={{flex: 1}}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8}}>
+                    <span style={{fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-primary)'}}>{event.label}</span>
+                    <span style={{fontSize: '0.8rem', color: 'var(--accent-color)', fontWeight: 'bold', flexShrink: 0}}>{event.time}</span>
+                  </div>
+                  {(event.duration || event.detail) && (
+                    <div style={{fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center'}}>
+                      {event.duration && <span style={{background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: 4}}>{event.duration}</span>}
+                      {event.detail && <span>{event.detail}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
+          {displayedMatches.map(match => (
+            <MatchCard 
+              key={match.id} 
+              match={match} 
+              homeTeam={getTeam(match.homeId)} 
+              awayTeam={getTeam(match.awayId)} 
+              refereeTeam={getTeam(match.refereeTeamId)}
+              refereePlayer={getPlayer(match.refereePlayerId)}
+              getPlayer={getPlayer}
+              onClick={() => onMatchClick(match)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -514,7 +598,7 @@ function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, getP
 }
 
 function StandingsView({ standings, matches, members, getTeam }) {
-  const [subTab, setSubTab] = useState('team'); // 'team', 'goals', 'assists'
+  const [subTab, setSubTab] = useState('team');
 
   // Calculate personal stats
   const getPersonalStats = () => {
