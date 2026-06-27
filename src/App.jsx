@@ -130,7 +130,7 @@ function App() {
     <div className="container">
       {/* Header */}
       <header className="header">
-        <h1>Alpha Cup 2026</h1>
+        <h1>一般ミニサッカー大会@平和の森公園</h1>
         <div className="team-logo" style={{width: 36, height: 36, fontSize: '1.2rem'}}>🏆</div>
       </header>
 
