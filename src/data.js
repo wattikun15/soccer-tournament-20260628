@@ -46,16 +46,16 @@ export const initialMembers = [
 
 
 export const initialMatches = [
-  { id: 'm1', stage: 'league', date: '6/28 13:00', homeId: 't1', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't3', refereePlayerId: null },
-  { id: 'm2', stage: 'league', date: '6/28 13:30', homeId: 't3', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't1', refereePlayerId: null },
-  { id: 'm3', stage: 'league', date: '6/28 14:00', homeId: 't1', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't2', refereePlayerId: null },
-  { id: 'm4', stage: 'league', date: '6/28 14:30', homeId: 't2', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't1', refereePlayerId: null },
-  { id: 'm5', stage: 'league', date: '6/28 15:00', homeId: 't1', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't2', refereePlayerId: null },
-  { id: 'm6', stage: 'league', date: '6/28 15:30', homeId: 't2', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't4', refereePlayerId: null },
-  { id: 'm7', stage: 'semifinal', date: '6/28 16:00', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 1', refereeTeamId: 't3', refereePlayerId: null },
-  { id: 'm8', stage: 'semifinal', date: '6/28 16:00', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 2', refereeTeamId: 't4', refereePlayerId: null },
-  { id: 'm9', stage: 'third_place', date: '6/28 16:30', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '3位決定戦', refereeTeamId: 't1', refereePlayerId: null },
-  { id: 'm10', stage: 'final', date: '6/28 16:30', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝', refereeTeamId: 't2', refereePlayerId: null },
+  { id: 'm1', stage: 'league', date: '6/28 13:00', homeId: 't1', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
+  { id: 'm2', stage: 'league', date: '6/28 13:30', homeId: 't3', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
+  { id: 'm3', stage: 'league', date: '6/28 14:00', homeId: 't1', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
+  { id: 'm4', stage: 'league', date: '6/28 14:30', homeId: 't2', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
+  { id: 'm5', stage: 'league', date: '6/28 15:00', homeId: 't1', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
+  { id: 'm6', stage: 'league', date: '6/28 15:30', homeId: 't2', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', refereeTeamId: 't4', refereePlayerId: null, goals: [] },
+  { id: 'm7', stage: 'semifinal', date: '6/28 16:00', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 1', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
+  { id: 'm8', stage: 'semifinal', date: '6/28 16:00', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 2', refereeTeamId: 't4', refereePlayerId: null, goals: [] },
+  { id: 'm9', stage: 'third_place', date: '6/28 16:30', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '3位決定戦', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
+  { id: 'm10', stage: 'final', date: '6/28 16:30', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
 ];
 
 // Helper to calculate standings

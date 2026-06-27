@@ -5,40 +5,95 @@ import './index.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('schedule');
-  const [matches, setMatches] = useState(initialMatches);
+  const [matches, setMatches] = useState(() => {
+    const saved = localStorage.getItem('soccer_matches');
+    return saved ? JSON.parse(saved) : initialMatches;
+  });
   const [teams, setTeams] = useState(initialTeams);
-  const [members, setMembers] = useState(initialMembers);
+  const [members, setMembers] = useState(() => {
+    const saved = localStorage.getItem('soccer_members');
+    return saved ? JSON.parse(saved) : initialMembers;
+  });
   const [selectedMatch, setSelectedMatch] = useState(null);
+
+  // Save to localStorage when matches/members change
+  useEffect(() => {
+    localStorage.setItem('soccer_matches', JSON.stringify(matches));
+  }, [matches]);
+
+  useEffect(() => {
+    localStorage.setItem('soccer_members', JSON.stringify(members));
+  }, [members]);
   
   // Calculate standings whenever matches change
   const standings = calculateStandings(teams, matches);
 
   const handleMatchClick = (match) => {
-    setSelectedMatch({ ...match });
+    setSelectedMatch({ 
+      ...match,
+      goals: match.goals ? [...match.goals] : []
+    });
   };
 
   const closeModal = () => {
     setSelectedMatch(null);
   };
 
-  const updateMatchScore = (homeDelta, awayDelta) => {
+  const addGoal = (teamId) => {
     if (!selectedMatch) return;
-    const newHomeScore = Math.max(0, selectedMatch.homeScore + homeDelta);
-    const newAwayScore = Math.max(0, selectedMatch.awayScore + awayDelta);
-    
+    const newGoal = {
+      id: 'g_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      teamId,
+      scorerId: null,
+      assistId: null
+    };
+    const updatedGoals = [...selectedMatch.goals, newGoal];
+    const homeScore = updatedGoals.filter(g => g.teamId === selectedMatch.homeId).length;
+    const awayScore = updatedGoals.filter(g => g.teamId === selectedMatch.awayId).length;
+
     setSelectedMatch({
       ...selectedMatch,
-      homeScore: newHomeScore,
-      awayScore: newAwayScore,
+      goals: updatedGoals,
+      homeScore,
+      awayScore
+    });
+  };
+
+  const removeGoal = (goalId) => {
+    if (!selectedMatch) return;
+    const updatedGoals = selectedMatch.goals.filter(g => g.id !== goalId);
+    const homeScore = updatedGoals.filter(g => g.teamId === selectedMatch.homeId).length;
+    const awayScore = updatedGoals.filter(g => g.teamId === selectedMatch.awayId).length;
+
+    setSelectedMatch({
+      ...selectedMatch,
+      goals: updatedGoals,
+      homeScore,
+      awayScore
+    });
+  };
+
+  const updateGoalDetail = (goalId, field, val) => {
+    if (!selectedMatch) return;
+    const updatedGoals = selectedMatch.goals.map(g => 
+      g.id === goalId ? { ...g, [field]: val || null } : g
+    );
+    setSelectedMatch({
+      ...selectedMatch,
+      goals: updatedGoals
     });
   };
 
   const updateMatchTeams = (homeId, awayId) => {
     if (!selectedMatch) return;
+    // reset goals if teams change
     setSelectedMatch({
       ...selectedMatch,
       homeId: homeId || null,
-      awayId: awayId || null
+      awayId: awayId || null,
+      goals: [],
+      homeScore: 0,
+      awayScore: 0
     });
   };
 
@@ -55,7 +110,7 @@ function App() {
     setSelectedMatch({
       ...selectedMatch,
       refereeTeamId: teamId || null,
-      refereePlayerId: null // reset player when team changes
+      refereePlayerId: null
     });
   };
 
@@ -91,7 +146,12 @@ function App() {
         )}
         
         {activeTab === 'standings' && (
-          <StandingsView standings={standings} />
+          <StandingsView 
+            standings={standings} 
+            matches={matches}
+            members={members}
+            getTeam={getTeam}
+          />
         )}
 
         {activeTab === 'teams' && (
@@ -117,7 +177,7 @@ function App() {
           onClick={() => setActiveTab('standings')}
         >
           <Trophy size={24} />
-          <span>順位表</span>
+          <span>順位・個人</span>
         </div>
         <div 
           className={`nav-item ${activeTab === 'teams' ? 'active' : ''}`}
@@ -198,21 +258,60 @@ function App() {
                 </div>
               )}
 
-              {/* Score Controls */}
-              <div style={{display: 'flex', gap: 16, marginBottom: 24}}>
-                <div style={{flex: 1}}>
-                  <div className="score-control">
-                    <button className="score-btn" onClick={() => updateMatchScore(-1, 0)}><Minus size={24} /></button>
-                    <div className="score-value">{selectedMatch.homeScore}</div>
-                    <button className="score-btn" onClick={() => updateMatchScore(1, 0)}><Plus size={24} /></button>
-                  </div>
+              {/* Goal Scoring Panel */}
+              <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
+                <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>得点・アシストの入力</h4>
+                
+                <div style={{display: 'flex', gap: 16, marginBottom: 16}}>
+                  <button className="btn btn-primary" style={{flex: 1, padding: '12px', fontSize: '0.85rem', marginBottom: 0}} onClick={() => addGoal(selectedMatch.homeId)} disabled={!selectedMatch.homeId}>
+                    + 左チーム得点
+                  </button>
+                  <button className="btn btn-primary" style={{flex: 1, padding: '12px', fontSize: '0.85rem', marginBottom: 0}} onClick={() => addGoal(selectedMatch.awayId)} disabled={!selectedMatch.awayId}>
+                    + 右チーム得点
+                  </button>
                 </div>
-                <div style={{flex: 1}}>
-                  <div className="score-control">
-                    <button className="score-btn" onClick={() => updateMatchScore(0, -1)}><Minus size={24} /></button>
-                    <div className="score-value">{selectedMatch.awayScore}</div>
-                    <button className="score-btn" onClick={() => updateMatchScore(0, 1)}><Plus size={24} /></button>
-                  </div>
+
+                {/* Goals list */}
+                <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                  {selectedMatch.goals.map((goal, idx) => {
+                    const goalTeam = getTeam(goal.teamId);
+                    const teamMembers = members.filter(m => m.teamId === goal.teamId);
+                    return (
+                      <div key={goal.id} style={{display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.15)', padding: '8px 12px', borderRadius: 8, fontSize: '0.85rem'}}>
+                        <span style={{fontWeight: 'bold', color: 'var(--accent-color)'}}>{goalTeam?.emoji}</span>
+                        <select 
+                          value={goal.scorerId || ''} 
+                          onChange={e => updateGoalDetail(goal.id, 'scorerId', e.target.value)}
+                          className="edit-input"
+                          style={{padding: '4px 8px', fontSize: '0.8rem', flex: 1, width: '45%'}}
+                        >
+                          <option value="">得点者: 未設定</option>
+                          {teamMembers.map(m => (
+                            <option key={m.id} value={m.id}>{m.number ? `[${m.number}] ` : ''}{m.name}</option>
+                          ))}
+                        </select>
+
+                        <select 
+                          value={goal.assistId || ''} 
+                          onChange={e => updateGoalDetail(goal.id, 'assistId', e.target.value)}
+                          className="edit-input"
+                          style={{padding: '4px 8px', fontSize: '0.8rem', flex: 1, width: '45%'}}
+                        >
+                          <option value="">アシスト: なし</option>
+                          {teamMembers.filter(m => m.id !== goal.scorerId).map(m => (
+                            <option key={m.id} value={m.id}>{m.number ? `[${m.number}] ` : ''}{m.name}</option>
+                          ))}
+                        </select>
+
+                        <button onClick={() => removeGoal(goal.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4}}>
+                          <X size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {selectedMatch.goals.length === 0 && (
+                    <p style={{color: 'var(--text-secondary)', textAlign: 'center', fontSize: '0.8rem'}}>得点データはありません</p>
+                  )}
                 </div>
               </div>
 
@@ -221,7 +320,6 @@ function App() {
                 <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>審判の設定</h4>
                 
                 <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-                  {/* Referee Team Selector */}
                   <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
                     <span style={{fontSize: '0.9rem'}}>担当チーム:</span>
                     <select 
@@ -237,7 +335,6 @@ function App() {
                     </select>
                   </div>
 
-                  {/* Referee Player Selector */}
                   {selectedMatch.refereeTeamId && (
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
                       <span style={{fontSize: '0.9rem'}}>主審（個人）:</span>
@@ -281,7 +378,7 @@ function App() {
 }
 
 function ScheduleView({ matches, getTeam, getPlayer, onMatchClick }) {
-  const [stage, setStage] = useState('league'); // 'league' or 'tournament'
+  const [stage, setStage] = useState('league');
 
   const displayedMatches = matches.filter(m => 
     stage === 'league' ? m.stage === 'league' : m.stage !== 'league'
@@ -313,6 +410,7 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick }) {
             awayTeam={getTeam(match.awayId)} 
             refereeTeam={getTeam(match.refereeTeamId)}
             refereePlayer={getPlayer(match.refereePlayerId)}
+            getPlayer={getPlayer}
             onClick={() => onMatchClick(match)}
           />
         ))}
@@ -321,7 +419,7 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick }) {
   );
 }
 
-function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, onClick }) {
+function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, getPlayer, onClick }) {
   const getStatusText = (status) => {
     switch(status) {
       case 'live': return 'LIVE';
@@ -329,6 +427,21 @@ function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, onCl
       default: return match.date;
     }
   };
+
+  const getGoalsText = (teamId) => {
+    if (!match.goals) return '';
+    return match.goals
+      .filter(g => g.teamId === teamId && g.scorerId)
+      .map(g => {
+        const scorer = getPlayer(g.scorerId);
+        const assist = g.assistId ? getPlayer(g.assistId) : null;
+        return `${scorer?.name}${assist ? `(A:${assist.name})` : ''}`;
+      })
+      .join(', ');
+  };
+
+  const homeGoalsText = getGoalsText(match.homeId);
+  const awayGoalsText = getGoalsText(match.awayId);
 
   return (
     <div className="glass-card match-item" onClick={onClick}>
@@ -361,6 +474,24 @@ function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, onCl
         </div>
       </div>
 
+      {/* Scorers display */}
+      {(homeGoalsText || awayGoalsText) && (
+        <div style={{
+          marginTop: 4,
+          padding: '6px 8px',
+          background: 'rgba(255,255,255,0.03)',
+          borderRadius: 6,
+          fontSize: '0.75rem',
+          color: 'var(--text-secondary)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2
+        }}>
+          {homeGoalsText && <div>⚽ {homeTeam?.name}: {homeGoalsText}</div>}
+          {awayGoalsText && <div>⚽ {awayTeam?.name}: {awayGoalsText}</div>}
+        </div>
+      )}
+
       {/* Referee Info Badge */}
       <div style={{
         marginTop: 4, 
@@ -382,48 +513,156 @@ function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, onCl
   );
 }
 
-function StandingsView({ standings }) {
+function StandingsView({ standings, matches, members, getTeam }) {
+  const [subTab, setSubTab] = useState('team'); // 'team', 'goals', 'assists'
+
+  // Calculate personal stats
+  const getPersonalStats = () => {
+    const stats = {};
+    matches.forEach(m => {
+      if (m.goals) {
+        m.goals.forEach(g => {
+          if (g.scorerId) {
+            if (!stats[g.scorerId]) stats[g.scorerId] = { goals: 0, assists: 0 };
+            stats[g.scorerId].goals += 1;
+          }
+          if (g.assistId) {
+            if (!stats[g.assistId]) stats[g.assistId] = { goals: 0, assists: 0 };
+            stats[g.assistId].assists += 1;
+          }
+        });
+      }
+    });
+
+    return Object.keys(stats).map(playerId => {
+      const player = members.find(m => m.id === playerId);
+      const team = player ? getTeam(player.teamId) : null;
+      return {
+        id: playerId,
+        name: player ? player.name : '不明',
+        number: player ? player.number : '',
+        teamName: team ? team.name : '',
+        teamEmoji: team ? team.emoji : '',
+        goals: stats[playerId].goals,
+        assists: stats[playerId].assists
+      };
+    });
+  };
+
+  const personalList = getPersonalStats();
+  const goalRankings = [...personalList].filter(p => p.goals > 0).sort((a, b) => b.goals - a.goals);
+  const assistRankings = [...personalList].filter(p => p.assists > 0).sort((a, b) => b.assists - a.assists);
+
   return (
     <div>
-      <h2 style={{marginBottom: 16}}>リーグ戦順位表</h2>
-      <div className="table-container">
-        <table className="standings-table">
-          <thead>
-            <tr>
-              <th>クラブ</th>
-              <th>試</th>
-              <th>勝</th>
-              <th>分</th>
-              <th>負</th>
-              <th>差</th>
-              <th>点</th>
-            </tr>
-          </thead>
-          <tbody>
-            {standings.map((team, index) => (
-              <tr key={team.id}>
-                <td>
-                  <span style={{color: 'var(--text-secondary)', marginRight: 8, fontSize: '0.8rem'}}>{index + 1}</span>
-                  {team.emoji} <span style={{display: 'none'}}>{team.name}</span>
-                </td>
-                <td>{team.played}</td>
-                <td>{team.won}</td>
-                <td>{team.drawn}</td>
-                <td>{team.lost}</td>
-                <td>{team.goalDifference > 0 ? `+${team.goalDifference}` : team.goalDifference}</td>
-                <td style={{fontWeight: 'bold', color: 'var(--accent-color)'}}>{team.points}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="tabs" style={{marginBottom: 16}}>
+        <div className={`tab ${subTab === 'team' ? 'active' : ''}`} onClick={() => setSubTab('team')}>順位表</div>
+        <div className={`tab ${subTab === 'goals' ? 'active' : ''}`} onClick={() => setSubTab('goals')}>得点王</div>
+        <div className={`tab ${subTab === 'assists' ? 'active' : ''}`} onClick={() => setSubTab('assists')}>アシスト</div>
       </div>
+
+      {subTab === 'team' && (
+        <div className="table-container">
+          <table className="standings-table">
+            <thead>
+              <tr>
+                <th>クラブ</th>
+                <th>試</th>
+                <th>勝</th>
+                <th>分</th>
+                <th>負</th>
+                <th>差</th>
+                <th>点</th>
+              </tr>
+            </thead>
+            <tbody>
+              {standings.map((team, index) => (
+                <tr key={team.id}>
+                  <td>
+                    <span style={{color: 'var(--text-secondary)', marginRight: 8, fontSize: '0.8rem'}}>{index + 1}</span>
+                    {team.emoji} {team.name}
+                  </td>
+                  <td>{team.played}</td>
+                  <td>{team.won}</td>
+                  <td>{team.drawn}</td>
+                  <td>{team.lost}</td>
+                  <td>{team.goalDifference > 0 ? `+${team.goalDifference}` : team.goalDifference}</td>
+                  <td style={{fontWeight: 'bold', color: 'var(--accent-color)'}}>{team.points}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {subTab === 'goals' && (
+        <div className="table-container">
+          <table className="standings-table">
+            <thead>
+              <tr>
+                <th style={{paddingLeft: '16px'}}>選手</th>
+                <th>クラブ</th>
+                <th style={{paddingRight: '16px'}}>得点数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {goalRankings.map((player, idx) => (
+                <tr key={player.id}>
+                  <td style={{paddingLeft: '16px', textAlign: 'left'}}>
+                    <span style={{color: 'var(--text-secondary)', marginRight: 8, fontSize: '0.8rem'}}>{idx + 1}</span>
+                    {player.number ? `[${player.number}] ` : ''}{player.name}
+                  </td>
+                  <td>{player.teamEmoji} {player.teamName}</td>
+                  <td style={{fontWeight: 'bold', color: 'var(--accent-color)', paddingRight: '16px'}}>{player.goals}</td>
+                </tr>
+              ))}
+              {goalRankings.length === 0 && (
+                <tr>
+                  <td colSpan="3" style={{color: 'var(--text-secondary)', padding: '20px 0'}}>得点データがありません</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {subTab === 'assists' && (
+        <div className="table-container">
+          <table className="standings-table">
+            <thead>
+              <tr>
+                <th style={{paddingLeft: '16px'}}>選手</th>
+                <th>クラブ</th>
+                <th style={{paddingRight: '16px'}}>アシスト数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assistRankings.map((player, idx) => (
+                <tr key={player.id}>
+                  <td style={{paddingLeft: '16px', textAlign: 'left'}}>
+                    <span style={{color: 'var(--text-secondary)', marginRight: 8, fontSize: '0.8rem'}}>{idx + 1}</span>
+                    {player.number ? `[${player.number}] ` : ''}{player.name}
+                  </td>
+                  <td>{player.teamEmoji} {player.teamName}</td>
+                  <td style={{fontWeight: 'bold', color: 'var(--accent-color)', paddingRight: '16px'}}>{player.assists}</td>
+                </tr>
+              ))}
+              {assistRankings.length === 0 && (
+                <tr>
+                  <td colSpan="3" style={{color: 'var(--text-secondary)', padding: '20px 0'}}>アシストデータがありません</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
 
 function TeamsView({ teams, members, setMembers }) {
   const [selectedTeam, setSelectedTeam] = useState(teams[0]?.id);
-  const [editingMember, setEditingMember] = useState(null); // id of member being edited
+  const [editingMember, setEditingMember] = useState(null);
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
 
@@ -470,7 +709,7 @@ function TeamsView({ teams, members, setMembers }) {
       </div>
 
       <div className="glass-card" style={{marginTop: 16}}>
-        <div style={{display: 'flex', justifycontent: 'space-between', alignItems: 'center', marginBottom: 16}}>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}}>
           <h3 style={{margin: 0}}>登録メンバー</h3>
           <button className="btn btn-primary" style={{padding: '8px 16px', width: 'auto', marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4}} onClick={addNewMember}>
             <Plus size={16} /> 追加
