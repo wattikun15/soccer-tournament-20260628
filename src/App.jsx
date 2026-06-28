@@ -3,26 +3,30 @@ import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2 } f
 import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable } from './data';
 import './index.css';
 
+// Using v2 keys to force refresh the new official schedule and team list
+const MATCHES_KEY = 'soccer_matches_v2';
+const MEMBERS_KEY = 'soccer_members_v2';
+
 function App() {
   const [activeTab, setActiveTab] = useState('schedule');
   const [matches, setMatches] = useState(() => {
-    const saved = localStorage.getItem('soccer_matches');
+    const saved = localStorage.getItem(MATCHES_KEY);
     return saved ? JSON.parse(saved) : initialMatches;
   });
   const [teams, setTeams] = useState(initialTeams);
   const [members, setMembers] = useState(() => {
-    const saved = localStorage.getItem('soccer_members');
+    const saved = localStorage.getItem(MEMBERS_KEY);
     return saved ? JSON.parse(saved) : initialMembers;
   });
   const [selectedMatch, setSelectedMatch] = useState(null);
 
   // Save to localStorage when matches/members change
   useEffect(() => {
-    localStorage.setItem('soccer_matches', JSON.stringify(matches));
+    localStorage.setItem(MATCHES_KEY, JSON.stringify(matches));
   }, [matches]);
 
   useEffect(() => {
-    localStorage.setItem('soccer_members', JSON.stringify(members));
+    localStorage.setItem(MEMBERS_KEY, JSON.stringify(members));
   }, [members]);
   
   // Calculate standings whenever matches change
