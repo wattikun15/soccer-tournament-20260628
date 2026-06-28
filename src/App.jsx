@@ -750,6 +750,7 @@ function StandingsView({ standings, matches, members, getTeam }) {
         id: playerId,
         name: player ? player.name : '不明',
         number: player ? player.number : '',
+        teamId: player ? player.teamId : '',
         teamName: team ? team.name : '',
         teamEmoji: team ? team.emoji : '',
         goals: stats[playerId].goals,
@@ -758,9 +759,20 @@ function StandingsView({ standings, matches, members, getTeam }) {
     });
   };
 
+  // 同率時のソート: チーム順位(standings配列順) → 背番号昇順
+  const rankSort = (key) => (a, b) => {
+    if (b[key] !== a[key]) return b[key] - a[key];
+    const aPos = standings.findIndex(t => t.id === a.teamId);
+    const bPos = standings.findIndex(t => t.id === b.teamId);
+    if (aPos !== bPos) return aPos - bPos;
+    const aNum = Number(a.number) || 9999;
+    const bNum = Number(b.number) || 9999;
+    return aNum - bNum;
+  };
+
   const personalList = getPersonalStats();
-  const goalRankings = [...personalList].filter(p => p.goals > 0).sort((a, b) => b.goals - a.goals);
-  const assistRankings = [...personalList].filter(p => p.assists > 0).sort((a, b) => b.assists - a.assists);
+  const goalRankings = [...personalList].filter(p => p.goals > 0).sort(rankSort('goals'));
+  const assistRankings = [...personalList].filter(p => p.assists > 0).sort(rankSort('assists'));
 
   // CSVダウンロード関数
   const downloadCSV = () => {
@@ -801,11 +813,19 @@ function StandingsView({ standings, matches, members, getTeam }) {
     });
     rows.push([]);
 
-    // ── 個人得点ランキング ──
+    // ── 得点ランキング ──
     rows.push(['【得点ランキング】']);
-    rows.push(['順位', 'チーム', '氏名', '背番号', '得点', 'アシスト']);
+    rows.push(['順位', 'チーム', '氏名', '背番号', '得点数']);
     goalRankings.forEach((p, i) => {
-      rows.push([i + 1, p.teamName, p.name, p.number, p.goals, p.assists]);
+      rows.push([i + 1, p.teamName, p.name, p.number, p.goals]);
+    });
+    rows.push([]);
+
+    // ── アシストランキング ──
+    rows.push(['【アシストランキング】']);
+    rows.push(['順位', 'チーム', '氏名', '背番号', 'アシスト数']);
+    assistRankings.forEach((p, i) => {
+      rows.push([i + 1, p.teamName, p.name, p.number, p.assists]);
     });
     rows.push([]);
 
