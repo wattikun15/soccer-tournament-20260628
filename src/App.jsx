@@ -762,6 +762,75 @@ function StandingsView({ standings, matches, members, getTeam }) {
   const goalRankings = [...personalList].filter(p => p.goals > 0).sort((a, b) => b.goals - a.goals);
   const assistRankings = [...personalList].filter(p => p.assists > 0).sort((a, b) => b.assists - a.assists);
 
+  // CSVダウンロード関数
+  const downloadCSV = () => {
+    const rows = [];
+
+    // ── 試合結果 ──
+    rows.push(['【試合結果】']);
+    rows.push(['試合名', '時間', 'ホーム', 'スコア', 'アウェイ', '状態']);
+    matches.forEach(m => {
+      const home = getTeam(m.homeId)?.name || '未定';
+      const away = getTeam(m.awayId)?.name || '未定';
+      const score = (m.status === 'finished' || m.status === 'live')
+        ? `${m.homeScore}-${m.awayScore}` : '-';
+      const status = m.status === 'finished' ? '試合終了'
+        : m.status === 'live' ? '試合中' : '予定';
+      rows.push([m.label, m.date, home, score, away, status]);
+    });
+    rows.push([]);
+
+    // ── 得点・アシスト詳細 ──
+    rows.push(['【得点・アシスト詳細】']);
+    rows.push(['試合名', 'チーム', '得点者', '背番号', 'アシスト者', '背番号']);
+    matches.forEach(m => {
+      if (!m.goals || m.goals.length === 0) return;
+      m.goals.forEach(g => {
+        const scorer = members.find(p => p.id === g.scorerId);
+        const assist = members.find(p => p.id === g.assistId);
+        const teamName = getTeam(g.teamId)?.name || '';
+        rows.push([
+          m.label,
+          teamName,
+          scorer?.name || '',
+          scorer?.number || '',
+          assist?.name || '',
+          assist?.number || ''
+        ]);
+      });
+    });
+    rows.push([]);
+
+    // ── 個人得点ランキング ──
+    rows.push(['【得点ランキング】']);
+    rows.push(['順位', 'チーム', '氏名', '背番号', '得点', 'アシスト']);
+    goalRankings.forEach((p, i) => {
+      rows.push([i + 1, p.teamName, p.name, p.number, p.goals, p.assists]);
+    });
+    rows.push([]);
+
+    // ── 順位表 ──
+    rows.push(['【予選順位表】']);
+    rows.push(['順位', 'チーム', '試合', '勝', '分', '負', '得点', '失点', '得失点差', '勝点']);
+    standings.forEach((t, i) => {
+      rows.push([i + 1, t.name, t.played, t.won, t.drawn, t.lost,
+        t.goalsFor, t.goalsAgainst, t.goalDifference, t.points]);
+    });
+
+    // CSV文字列を生成（BOM付きでExcel/Sheetsで文字化けしない）
+    const csv = '\uFEFF' + rows.map(row =>
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tournament_results_${new Date().toLocaleDateString('ja-JP').replace(/\//g, '')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
       <div className="tabs" style={{marginBottom: 16}}>
@@ -865,6 +934,29 @@ function StandingsView({ standings, matches, members, getTeam }) {
           </table>
         </div>
       )}
+
+      {/* CSVダウンロードボタン */}
+      <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <button
+          className="btn btn-secondary"
+          onClick={downloadCSV}
+          style={{
+            width: '100%',
+            padding: '14px',
+            fontSize: '0.95rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            borderColor: 'rgba(255,255,255,0.2)'
+          }}
+        >
+          📥 結果をCSVでダウンロード
+        </button>
+        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 8 }}>
+          ダウンロード後、スプレッドシートで「ファイル → インポート」から読み込めます
+        </p>
+      </div>
     </div>
   );
 }
