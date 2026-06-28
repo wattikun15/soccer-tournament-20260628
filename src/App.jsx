@@ -14,50 +14,131 @@ function App() {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Fetch initial data from cloud database (KVdb)
+  // Helper functions to save data to cloud
+  const saveMatchesToCloud = async (updatedMatches) => {
+    try {
+      await fetch(`${KVDB_BASE_URL}/matches`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedMatches)
+      });
+    } catch (err) {
+      console.error('Failed to save matches to cloud:', err);
+    }
+  };
+
+  const saveMembersToCloud = async (updatedMembers) => {
+    try {
+      await fetch(`${KVDB_BASE_URL}/members`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedMembers)
+      });
+    } catch (err) {
+      console.error('Failed to save members to cloud:', err);
+    }
+  };
+
+  // 1. Fetch data from cloud, with auto-migration of old local data
   useEffect(() => {
-    const fetchData = async () => {
+    const initAndMigrate = async () => {
       try {
+        // A. Check if this device has old local data (from previous versions)
+        const oldMatches = localStorage.getItem('soccer_matches') || localStorage.getItem('soccer_matches_v2');
+        const oldMembers = localStorage.getItem('soccer_members') || localStorage.getItem('soccer_members_v2');
+        
+        let migratedMatches = null;
+        let migratedMembers = null;
+
+        if (oldMatches) {
+          try {
+            const parsed = JSON.parse(oldMatches);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              migratedMatches = parsed;
+            }
+          } catch (e) {
+            console.error('Parse error old matches:', e);
+          }
+        }
+
+        if (oldMembers) {
+          try {
+            const parsed = JSON.parse(oldMembers);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              migratedMembers = parsed;
+            }
+          } catch (e) {
+            console.error('Parse error old members:', e);
+          }
+        }
+
+        // B. Fetch the current cloud data
         const [resMatches, resMembers] = await Promise.all([
           fetch(`${KVDB_BASE_URL}/matches`),
           fetch(`${KVDB_BASE_URL}/members`)
         ]);
 
-        if (resMatches.ok) {
+        let finalMatches = initialMatches;
+        let finalMembers = initialMembers;
+
+        // If this device has local edits, prioritize uploading them to cloud!
+        if (migratedMatches) {
+          finalMatches = migratedMatches;
+          await saveMatchesToCloud(migratedMatches);
+        } else if (resMatches.ok) {
           const cloudMatches = await resMatches.json();
           if (Array.isArray(cloudMatches) && cloudMatches.length > 0) {
-            setMatches(cloudMatches);
+            finalMatches = cloudMatches;
           } else {
-            // If empty in cloud, initialize with default
             await saveMatchesToCloud(initialMatches);
           }
         } else {
           await saveMatchesToCloud(initialMatches);
         }
 
-        if (resMembers.ok) {
+        if (migratedMembers) {
+          finalMembers = migratedMembers;
+          await saveMembersToCloud(migratedMembers);
+        } else if (resMembers.ok) {
           const cloudMembers = await resMembers.json();
           if (Array.isArray(cloudMembers) && cloudMembers.length > 0) {
-            setMembers(cloudMembers);
+            finalMembers = cloudMembers;
           } else {
             await saveMembersToCloud(initialMembers);
           }
         } else {
           await saveMembersToCloud(initialMembers);
         }
+
+        // C. Update state
+        setMatches(finalMatches);
+        setMembers(finalMembers);
+
+        // D. Clear old localstorage keys to mark migration as done on this device
+        if (oldMatches || oldMembers) {
+          localStorage.removeItem('soccer_matches');
+          localStorage.removeItem('soccer_matches_v2');
+          localStorage.removeItem('soccer_members');
+          localStorage.removeItem('soccer_members_v2');
+          // Add a flag to prevent future migration overwrites
+          localStorage.setItem('soccer_migrated', 'true');
+        }
       } catch (err) {
-        console.error('Failed to fetch from cloud database:', err);
+        console.error('Migration or Fetch failed:', err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    initAndMigrate();
   }, []);
 
   // 2. Poll the database every 10 seconds to get real-time sync
   useEffect(() => {
     const interval = setInterval(async () => {
+      // Don't poll if still loading initial sync
+      if (isLoading) return;
+
       try {
         const [resMatches, resMembers] = await Promise.all([
           fetch(`${KVDB_BASE_URL}/matches`),
@@ -83,32 +164,7 @@ function App() {
     }, 10000); // 10 seconds polling
 
     return () => clearInterval(interval);
-  }, []);
-
-  // Helper functions to save data to cloud
-  const saveMatchesToCloud = async (updatedMatches) => {
-    try {
-      await fetch(`${KVDB_BASE_URL}/matches`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedMatches)
-      });
-    } catch (err) {
-      console.error('Failed to save matches to cloud:', err);
-    }
-  };
-
-  const saveMembersToCloud = async (updatedMembers) => {
-    try {
-      await fetch(`${KVDB_BASE_URL}/members`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedMembers)
-      });
-    } catch (err) {
-      console.error('Failed to save members to cloud:', err);
-    }
-  };
+  }, [isLoading]);
 
   // Calculate standings whenever matches change
   const standings = calculateStandings(teams, matches);
