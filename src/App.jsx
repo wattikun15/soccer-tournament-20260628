@@ -3,32 +3,113 @@ import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2 } f
 import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable } from './data';
 import './index.css';
 
-// Using v2 keys to force refresh the new official schedule and team list
-const MATCHES_KEY = 'soccer_matches_v2';
-const MEMBERS_KEY = 'soccer_members_v2';
+// Unique KVdb Bucket URL
+const KVDB_BASE_URL = 'https://kvdb.io/CypVptwH38N4gqW9Yd9HCS/nakanofa_20260628';
 
 function App() {
   const [activeTab, setActiveTab] = useState('schedule');
-  const [matches, setMatches] = useState(() => {
-    const saved = localStorage.getItem(MATCHES_KEY);
-    return saved ? JSON.parse(saved) : initialMatches;
-  });
+  const [matches, setMatches] = useState(initialMatches);
   const [teams, setTeams] = useState(initialTeams);
-  const [members, setMembers] = useState(() => {
-    const saved = localStorage.getItem(MEMBERS_KEY);
-    return saved ? JSON.parse(saved) : initialMembers;
-  });
+  const [members, setMembers] = useState(initialMembers);
   const [selectedMatch, setSelectedMatch] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Save to localStorage when matches/members change
+  // 1. Fetch initial data from cloud database (KVdb)
   useEffect(() => {
-    localStorage.setItem(MATCHES_KEY, JSON.stringify(matches));
-  }, [matches]);
+    const fetchData = async () => {
+      try {
+        const [resMatches, resMembers] = await Promise.all([
+          fetch(`${KVDB_BASE_URL}/matches`),
+          fetch(`${KVDB_BASE_URL}/members`)
+        ]);
 
+        if (resMatches.ok) {
+          const cloudMatches = await resMatches.json();
+          if (Array.isArray(cloudMatches) && cloudMatches.length > 0) {
+            setMatches(cloudMatches);
+          } else {
+            // If empty in cloud, initialize with default
+            await saveMatchesToCloud(initialMatches);
+          }
+        } else {
+          await saveMatchesToCloud(initialMatches);
+        }
+
+        if (resMembers.ok) {
+          const cloudMembers = await resMembers.json();
+          if (Array.isArray(cloudMembers) && cloudMembers.length > 0) {
+            setMembers(cloudMembers);
+          } else {
+            await saveMembersToCloud(initialMembers);
+          }
+        } else {
+          await saveMembersToCloud(initialMembers);
+        }
+      } catch (err) {
+        console.error('Failed to fetch from cloud database:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // 2. Poll the database every 10 seconds to get real-time sync
   useEffect(() => {
-    localStorage.setItem(MEMBERS_KEY, JSON.stringify(members));
-  }, [members]);
-  
+    const interval = setInterval(async () => {
+      try {
+        const [resMatches, resMembers] = await Promise.all([
+          fetch(`${KVDB_BASE_URL}/matches`),
+          fetch(`${KVDB_BASE_URL}/members`)
+        ]);
+
+        if (resMatches.ok) {
+          const cloudMatches = await resMatches.json();
+          if (Array.isArray(cloudMatches) && cloudMatches.length > 0) {
+            setMatches(cloudMatches);
+          }
+        }
+
+        if (resMembers.ok) {
+          const cloudMembers = await resMembers.json();
+          if (Array.isArray(cloudMembers) && cloudMembers.length > 0) {
+            setMembers(cloudMembers);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync data from cloud:', err);
+      }
+    }, 10000); // 10 seconds polling
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Helper functions to save data to cloud
+  const saveMatchesToCloud = async (updatedMatches) => {
+    try {
+      await fetch(`${KVDB_BASE_URL}/matches`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedMatches)
+      });
+    } catch (err) {
+      console.error('Failed to save matches to cloud:', err);
+    }
+  };
+
+  const saveMembersToCloud = async (updatedMembers) => {
+    try {
+      await fetch(`${KVDB_BASE_URL}/members`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedMembers)
+      });
+    } catch (err) {
+      console.error('Failed to save members to cloud:', err);
+    }
+  };
+
   // Calculate standings whenever matches change
   const standings = calculateStandings(teams, matches);
 
@@ -117,17 +198,40 @@ function App() {
     });
   };
 
-  const saveMatch = (status) => {
-    setMatches(matches.map(m => 
+  const saveMatch = async (status) => {
+    const updated = matches.map(m => 
       m.id === selectedMatch.id 
         ? { ...selectedMatch, status } 
         : m
-    ));
+    );
+    setMatches(updated);
+    await saveMatchesToCloud(updated);
     closeModal();
+  };
+
+  const handleSetMembers = async (updater) => {
+    let updatedMembers;
+    if (typeof updater === 'function') {
+      updatedMembers = updater(members);
+    } else {
+      updatedMembers = updater;
+    }
+    setMembers(updatedMembers);
+    await saveMembersToCloud(updatedMembers);
   };
 
   const getTeam = (id) => teams.find(t => t.id === id);
   const getPlayer = (id) => members.find(p => p.id === id);
+
+  if (isLoading) {
+    return (
+      <div className="container" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
+        <div style={{color: 'var(--text-secondary)', fontSize: '1rem'}}>
+          クラウドデータベース接続中...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container">
@@ -161,7 +265,7 @@ function App() {
           <TeamsView 
             teams={teams}
             members={members}
-            setMembers={setMembers}
+            setMembers={handleSetMembers}
           />
         )}
       </main>
