@@ -41,40 +41,17 @@ function App() {
     }
   };
 
-  // 1. Fetch data from cloud, with auto-migration of old local data
+  // 1. Fetch data from Firebase (single source of truth)
   useEffect(() => {
-    const initAndMigrate = async () => {
+    const initFromCloud = async () => {
       try {
-        // A. Check if this device has old local data (from previous versions)
-        const oldMatches = localStorage.getItem('soccer_matches') || localStorage.getItem('soccer_matches_v2');
-        const oldMembers = localStorage.getItem('soccer_members') || localStorage.getItem('soccer_members_v2');
-        
-        let migratedMatches = null;
-        let migratedMembers = null;
+        // Clear any leftover old localStorage keys (cleanup)
+        localStorage.removeItem('soccer_matches');
+        localStorage.removeItem('soccer_matches_v2');
+        localStorage.removeItem('soccer_members');
+        localStorage.removeItem('soccer_members_v2');
 
-        if (oldMatches) {
-          try {
-            const parsed = JSON.parse(oldMatches);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              migratedMatches = parsed;
-            }
-          } catch (e) {
-            console.error('Parse error old matches:', e);
-          }
-        }
-
-        if (oldMembers) {
-          try {
-            const parsed = JSON.parse(oldMembers);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              migratedMembers = parsed;
-            }
-          } catch (e) {
-            console.error('Parse error old members:', e);
-          }
-        }
-
-        // B. Fetch the current cloud data
+        // Fetch from Firebase
         const [resMatches, resMembers] = await Promise.all([
           fetch(`${FIREBASE_BASE_URL}/matches.json`),
           fetch(`${FIREBASE_BASE_URL}/members.json`)
@@ -83,11 +60,7 @@ function App() {
         let finalMatches = initialMatches;
         let finalMembers = initialMembers;
 
-        // If this device has local edits, prioritize uploading them to cloud!
-        if (migratedMatches) {
-          finalMatches = migratedMatches;
-          await saveMatchesToCloud(migratedMatches);
-        } else if (resMatches.ok) {
+        if (resMatches.ok) {
           const cloudMatches = await resMatches.json();
           if (Array.isArray(cloudMatches) && cloudMatches.length > 0) {
             finalMatches = cloudMatches;
@@ -98,10 +71,7 @@ function App() {
           await saveMatchesToCloud(initialMatches);
         }
 
-        if (migratedMembers) {
-          finalMembers = migratedMembers;
-          await saveMembersToCloud(migratedMembers);
-        } else if (resMembers.ok) {
+        if (resMembers.ok) {
           const cloudMembers = await resMembers.json();
           if (Array.isArray(cloudMembers) && cloudMembers.length > 0) {
             finalMembers = cloudMembers;
@@ -112,26 +82,16 @@ function App() {
           await saveMembersToCloud(initialMembers);
         }
 
-        // C. Update state
         setMatches(finalMatches);
         setMembers(finalMembers);
-
-        // D. Clear old localstorage keys only if migration succeeded (we check response)
-        if (oldMatches || oldMembers) {
-          localStorage.removeItem('soccer_matches');
-          localStorage.removeItem('soccer_matches_v2');
-          localStorage.removeItem('soccer_members');
-          localStorage.removeItem('soccer_members_v2');
-          localStorage.setItem('soccer_migrated', 'true');
-        }
       } catch (err) {
-        console.error('Migration or Fetch failed:', err);
+        console.error('Failed to load from Firebase:', err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    initAndMigrate();
+    initFromCloud();
   }, []);
 
   // 2. Poll the database every 10 seconds to get real-time sync
