@@ -3,8 +3,8 @@ import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2 } f
 import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable } from './data';
 import './index.css';
 
-// Unique KVdb Bucket URL
-const KVDB_BASE_URL = 'https://kvdb.io/CypVptwH38N4gqW9Yd9HCS/nakanofa_20260628';
+// Firebase Realtime Database URL
+const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260628';
 
 function App() {
   const [activeTab, setActiveTab] = useState('schedule');
@@ -17,11 +17,12 @@ function App() {
   // Helper functions to save data to cloud
   const saveMatchesToCloud = async (updatedMatches) => {
     try {
-      await fetch(`${KVDB_BASE_URL}/matches`, {
+      const res = await fetch(`${FIREBASE_BASE_URL}/matches.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedMatches)
       });
+      if (!res.ok) console.error('Failed to save matches:', res.statusText);
     } catch (err) {
       console.error('Failed to save matches to cloud:', err);
     }
@@ -29,11 +30,12 @@ function App() {
 
   const saveMembersToCloud = async (updatedMembers) => {
     try {
-      await fetch(`${KVDB_BASE_URL}/members`, {
+      const res = await fetch(`${FIREBASE_BASE_URL}/members.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedMembers)
       });
+      if (!res.ok) console.error('Failed to save members:', res.statusText);
     } catch (err) {
       console.error('Failed to save members to cloud:', err);
     }
@@ -74,8 +76,8 @@ function App() {
 
         // B. Fetch the current cloud data
         const [resMatches, resMembers] = await Promise.all([
-          fetch(`${KVDB_BASE_URL}/matches`),
-          fetch(`${KVDB_BASE_URL}/members`)
+          fetch(`${FIREBASE_BASE_URL}/matches.json`),
+          fetch(`${FIREBASE_BASE_URL}/members.json`)
         ]);
 
         let finalMatches = initialMatches;
@@ -114,13 +116,12 @@ function App() {
         setMatches(finalMatches);
         setMembers(finalMembers);
 
-        // D. Clear old localstorage keys to mark migration as done on this device
+        // D. Clear old localstorage keys only if migration succeeded (we check response)
         if (oldMatches || oldMembers) {
           localStorage.removeItem('soccer_matches');
           localStorage.removeItem('soccer_matches_v2');
           localStorage.removeItem('soccer_members');
           localStorage.removeItem('soccer_members_v2');
-          // Add a flag to prevent future migration overwrites
           localStorage.setItem('soccer_migrated', 'true');
         }
       } catch (err) {
@@ -141,8 +142,8 @@ function App() {
 
       try {
         const [resMatches, resMembers] = await Promise.all([
-          fetch(`${KVDB_BASE_URL}/matches`),
-          fetch(`${KVDB_BASE_URL}/members`)
+          fetch(`${FIREBASE_BASE_URL}/matches.json`),
+          fetch(`${FIREBASE_BASE_URL}/members.json`)
         ]);
 
         if (resMatches.ok) {
@@ -436,7 +437,7 @@ function App() {
                       <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>アウェイ（右）</span>
                       <select 
                         value={selectedMatch.awayId || ''} 
-                        onChange={e => updateMatchTeams(selectedMatch.homeId, e.target.value)}
+                        onChange={updateMatchTeams(selectedMatch.homeId, e.target.value)}
                         className="edit-input"
                         style={{width: '100%'}}
                       >

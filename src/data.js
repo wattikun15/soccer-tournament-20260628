@@ -33,15 +33,16 @@ export const initialMembers = [
 
   // ケンFC (t3)
   { id: 't3_p1', teamId: 't3', name: '郡司 剛教', number: 13 },
-  { id: 't3_p2', teamId: 't3', name: '山口 光輝', number: 4 },
-  { id: 't3_p3', teamId: 't3', name: '郡司 真臣', number: 15 },
-  { id: 't3_p4', teamId: 't3', name: '鈴木 皓成', number: 12 },
-  { id: 't3_p5', teamId: 't3', name: '杉本 桃之介', number: 33 },
-  { id: 't3_p6', teamId: 't3', name: '後藤 裕保', number: 14 },
-  { id: 't3_p7', teamId: 't3', name: '江渡 忍夫', number: 27 },
-  { id: 't3_p8', teamId: 't3', name: '氣賀澤 淳', number: 23 },
-  { id: 't3_p9', teamId: 't3', name: '木村 証', number: 24 },
-  { id: 't3_p10', teamId: 't3', name: '西原 壮太', number: 16 }
+  { id: 't3_p2', teamId: 't3', name: '黒羽 拓明', number: 40 },
+  { id: 't3_p3', teamId: 't3', name: '山口 光輝', number: 4 },
+  { id: 't3_p4', teamId: 't3', name: '鈴木 皓成', number: 17 },
+  { id: 't3_p5', teamId: 't3', name: '杉本 桃之介', number: 22 },
+  { id: 't3_p6', teamId: 't3', name: '和田 健也', number: 33 },
+  { id: 't3_p7', teamId: 't3', name: '小松 凛太朗', number: 71 },
+  { id: 't3_p8', teamId: 't3', name: '般林 郁也', number: 92 },
+  { id: 't3_p9', teamId: 't3', name: '木村 証', number: 21 },
+  { id: 't3_p10', teamId: 't3', name: '後藤 裕保', number: 14 },
+  { id: 't3_p11', teamId: 't3', name: '金沢 仁', number: '' }
 ];
 
 
