@@ -397,7 +397,7 @@ function App() {
                       <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>アウェイ（右）</span>
                       <select 
                         value={selectedMatch.awayId || ''} 
-                        onChange={updateMatchTeams(selectedMatch.homeId, e.target.value)}
+                        onChange={e => updateMatchTeams(selectedMatch.homeId, e.target.value)}
                         className="edit-input"
                         style={{width: '100%'}}
                       >
