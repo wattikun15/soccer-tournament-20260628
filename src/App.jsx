@@ -986,8 +986,10 @@ function TeamsView({ teams, members, setMembers }) {
   const [editingMember, setEditingMember] = useState(null);
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
+  const [checkMode, setCheckMode] = useState(false);
 
   const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => Number(a.number) - Number(b.number));
+  const checkedCount = teamMembers.filter(m => m.checked).length;
 
   const startEdit = (member) => {
     setEditingMember(member.id);
@@ -1014,6 +1016,16 @@ function TeamsView({ teams, members, setMembers }) {
     setEditNumber('');
   };
 
+  const toggleCheck = (id) => {
+    setMembers(members.map(m => m.id === id ? { ...m, checked: !m.checked } : m));
+  };
+
+  const resetChecks = () => {
+    if (window.confirm('このチームの全チェックをリセットしますか？')) {
+      setMembers(members.map(m => m.teamId === selectedTeam ? { ...m, checked: false } : m));
+    }
+  };
+
   return (
     <div>
       <div className="tabs" style={{overflowX: 'auto', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch', gap: 8, background: 'transparent', padding: 0}}>
@@ -1030,19 +1042,99 @@ function TeamsView({ teams, members, setMembers }) {
       </div>
 
       <div className="glass-card" style={{marginTop: 16}}>
+        {/* ヘッダー */}
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}}>
-          <h3 style={{margin: 0}}>登録メンバー</h3>
-          <button className="btn btn-primary" style={{padding: '8px 16px', width: 'auto', marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4}} onClick={addNewMember}>
-            <Plus size={16} /> 追加
-          </button>
+          <h3 style={{margin: 0}}>
+            {checkMode ? '✅ メンバーチェック' : '登録メンバー'}
+          </h3>
+          <div style={{display: 'flex', gap: 8}}>
+            {!checkMode && (
+              <button className="btn btn-primary" style={{padding: '8px 16px', width: 'auto', marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4}} onClick={addNewMember}>
+                <Plus size={16} /> 追加
+              </button>
+            )}
+            <button
+              onClick={() => { setCheckMode(!checkMode); setEditingMember(null); }}
+              style={{
+                padding: '8px 14px',
+                width: 'auto',
+                marginBottom: 0,
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '0.85rem',
+                background: checkMode ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
+                color: checkMode ? '#fff' : 'var(--text-secondary)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {checkMode ? '✏️ 編集モード' : '✅ チェックモード'}
+            </button>
+          </div>
         </div>
 
+        {/* チェックモード: 進捗バー */}
+        {checkMode && (
+          <div style={{marginBottom: 16}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
+              <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>参加確認</span>
+              <span style={{fontSize: '0.9rem', fontWeight: 'bold', color: checkedCount === teamMembers.length ? '#4caf50' : 'var(--accent-color)'}}>
+                {checkedCount} / {teamMembers.length} 名
+              </span>
+            </div>
+            <div style={{background: 'rgba(255,255,255,0.1)', borderRadius: 99, height: 8, overflow: 'hidden'}}>
+              <div style={{
+                background: checkedCount === teamMembers.length ? '#4caf50' : 'var(--accent-color)',
+                height: '100%',
+                width: `${teamMembers.length > 0 ? (checkedCount / teamMembers.length) * 100 : 0}%`,
+                borderRadius: 99,
+                transition: 'width 0.3s ease'
+              }} />
+            </div>
+          </div>
+        )}
+
+        {/* メンバーリスト */}
         <div className="members-list" style={{display: 'flex', flexDirection: 'column', gap: 8}}>
           {teamMembers.length === 0 && <p style={{color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0'}}>メンバーが登録されていません</p>}
           
           {teamMembers.map(member => (
-            <div key={member.id} style={{display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: 8}}>
-              {editingMember === member.id ? (
+            <div
+              key={member.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: checkMode && member.checked
+                  ? 'rgba(76, 175, 80, 0.2)'
+                  : 'rgba(0,0,0,0.2)',
+                border: checkMode && member.checked
+                  ? '1px solid rgba(76, 175, 80, 0.5)'
+                  : '1px solid transparent',
+                padding: '12px 16px',
+                borderRadius: 8,
+                transition: 'all 0.2s',
+                cursor: checkMode ? 'pointer' : 'default'
+              }}
+              onClick={checkMode ? () => toggleCheck(member.id) : undefined}
+            >
+              {/* チェックモード: チェックマーク */}
+              {checkMode && (
+                <div style={{
+                  width: 28, height: 28,
+                  borderRadius: '50%',
+                  border: `2px solid ${member.checked ? '#4caf50' : 'rgba(255,255,255,0.3)'}`,
+                  background: member.checked ? '#4caf50' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginRight: 12, flexShrink: 0,
+                  transition: 'all 0.2s'
+                }}>
+                  {member.checked && <Check size={16} color="#fff" />}
+                </div>
+              )}
+
+              {/* 編集モード */}
+              {!checkMode && editingMember === member.id ? (
                 <div style={{display: 'flex', gap: 8, flex: 1, alignItems: 'center'}}>
                   <input 
                     type="number" 
@@ -1066,19 +1158,51 @@ function TeamsView({ teams, members, setMembers }) {
                 </div>
               ) : (
                 <div style={{display: 'flex', gap: 16, flex: 1, alignItems: 'center'}}>
-                  <div style={{width: 40, color: 'var(--text-secondary)', fontWeight: 'bold'}}>{member.number}</div>
-                  <div style={{flex: 1}}>{member.name}</div>
-                  <button onClick={() => startEdit(member)} style={{background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: 8, cursor: 'pointer'}}>
-                    <Edit2 size={18} />
-                  </button>
-                  <button onClick={() => deleteMember(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', padding: 8, cursor: 'pointer'}}>
-                    <Trash2 size={18} />
-                  </button>
+                  <div style={{
+                    width: 40,
+                    color: checkMode && member.checked ? '#4caf50' : 'var(--text-secondary)',
+                    fontWeight: 'bold'
+                  }}>{member.number}</div>
+                  <div style={{
+                    flex: 1,
+                    fontWeight: checkMode && member.checked ? 'bold' : 'normal',
+                    color: checkMode && member.checked ? '#fff' : 'inherit'
+                  }}>{member.name}</div>
+                  {!checkMode && (
+                    <>
+                      <button onClick={() => startEdit(member)} style={{background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: 8, cursor: 'pointer'}}>
+                        <Edit2 size={18} />
+                      </button>
+                      <button onClick={() => deleteMember(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', padding: 8, cursor: 'pointer'}}>
+                        <Trash2 size={18} />
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
           ))}
         </div>
+
+        {/* チェックモード: リセットボタン */}
+        {checkMode && teamMembers.length > 0 && (
+          <button
+            onClick={resetChecks}
+            style={{
+              marginTop: 16,
+              width: '100%',
+              padding: '10px',
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 8,
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontSize: '0.85rem'
+            }}
+          >
+            🔄 チェックをリセット
+          </button>
+        )}
       </div>
     </div>
   );
