@@ -520,7 +520,7 @@ function App() {
                 試合終了
               </button>
               <button className="btn btn-secondary" onClick={() => saveMatch('scheduled')}>
-                予定に戻す (リセット)
+                予定に戻す
               </button>
             </>
           )}
