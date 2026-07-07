@@ -1074,26 +1074,24 @@ function TeamsView({ teams, members, setMembers }) {
           </div>
         </div>
 
-        {/* チェックモード: 進捗バー */}
-        {checkMode && (
-          <div style={{marginBottom: 16}}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
-              <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>参加確認</span>
-              <span style={{fontSize: '0.9rem', fontWeight: 'bold', color: checkedCount === teamMembers.length ? '#4caf50' : 'var(--accent-color)'}}>
-                {checkedCount} / {teamMembers.length} 名
-              </span>
-            </div>
-            <div style={{background: 'rgba(255,255,255,0.1)', borderRadius: 99, height: 8, overflow: 'hidden'}}>
-              <div style={{
-                background: checkedCount === teamMembers.length ? '#4caf50' : 'var(--accent-color)',
-                height: '100%',
-                width: `${teamMembers.length > 0 ? (checkedCount / teamMembers.length) * 100 : 0}%`,
-                borderRadius: 99,
-                transition: 'width 0.3s ease'
-              }} />
-            </div>
+        {/* 進捗バー（常時表示） */}
+        <div style={{marginBottom: 16}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
+            <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>参加確認</span>
+            <span style={{fontSize: '0.9rem', fontWeight: 'bold', color: checkedCount === teamMembers.length && teamMembers.length > 0 ? '#4caf50' : 'var(--accent-color)'}}>
+              {checkedCount} / {teamMembers.length} 名
+            </span>
           </div>
-        )}
+          <div style={{background: 'rgba(255,255,255,0.1)', borderRadius: 99, height: 8, overflow: 'hidden'}}>
+            <div style={{
+              background: checkedCount === teamMembers.length && teamMembers.length > 0 ? '#4caf50' : 'var(--accent-color)',
+              height: '100%',
+              width: `${teamMembers.length > 0 ? (checkedCount / teamMembers.length) * 100 : 0}%`,
+              borderRadius: 99,
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+        </div>
 
         {/* メンバーリスト */}
         <div className="members-list" style={{display: 'flex', flexDirection: 'column', gap: 8}}>
@@ -1170,6 +1168,22 @@ function TeamsView({ teams, members, setMembers }) {
                   }}>{member.name}</div>
                   {!checkMode && (
                     <>
+                      {/* 編集モード: チェック済みバッジ */}
+                      {member.checked && (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 3,
+                          background: 'rgba(76,175,80,0.2)',
+                          border: '1px solid rgba(76,175,80,0.5)',
+                          borderRadius: 99,
+                          padding: '2px 8px',
+                          fontSize: '0.72rem',
+                          color: '#4caf50',
+                          fontWeight: 'bold',
+                          flexShrink: 0
+                        }}>
+                          <Check size={11} /> 確認済
+                        </div>
+                      )}
                       <button onClick={() => startEdit(member)} style={{background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: 8, cursor: 'pointer'}}>
                         <Edit2 size={18} />
                       </button>
