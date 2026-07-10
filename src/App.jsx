@@ -4,7 +4,7 @@ import { initialTeams, initialMatches, initialMembers, calculateStandings, initi
 import './index.css';
 
 // Firebase Realtime Database URL
-const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260628';
+const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260712';
 
 function App() {
   const [activeTab, setActiveTab] = useState('schedule');
