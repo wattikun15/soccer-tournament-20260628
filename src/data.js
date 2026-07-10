@@ -1,12 +1,12 @@
 export const initialTeams = [
-  { id: 't1', name: 'ミナミダイFC', emoji: '⚽' },
+  { id: 't1', name: '百式', emoji: '⚡' },
   { id: 't2', name: 'GA', emoji: '🦁' },
   { id: 't3', name: 'ケンFC', emoji: '🦅' },
-  { id: 't4', name: 'CISCO', emoji: '🐺' },
+  { id: 't4', name: '囲町FC', emoji: '🟥' },
 ];
 
 export const initialMembers = [
-  // ミナミダイFC (t1)
+  // 百式 (t1)
   { id: 't1_p1', teamId: 't1', name: '出本 篤', number: 16 },
   { id: 't1_p2', teamId: 't1', name: '駒澤 和弥', number: 15 },
   { id: 't1_p3', teamId: 't1', name: '阿久津 蒔温', number: 10 },
@@ -53,10 +53,8 @@ export const initialMatches = [
   { id: 'm4', stage: 'league', date: '14:11', homeId: 't2', awayId: 't1', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第4試合', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
   { id: 'm5', stage: 'league', date: '14:29', homeId: 't2', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第5試合', refereeTeamId: 't4', refereePlayerId: null, goals: [] },
   { id: 'm6', stage: 'league', date: '14:47', homeId: 't4', awayId: 't1', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第6試合', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
-  { id: 'm7', stage: 'semifinal', date: '15:07', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 第1試合', refereeTeamId: null, refereePlayerId: null, goals: [] },
-  { id: 'm8', stage: 'semifinal', date: '15:32', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '準決勝 第2試合', refereeTeamId: null, refereePlayerId: null, goals: [] },
-  { id: 'm9', stage: 'third_place', date: '15:57', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '三位決定戦', refereeTeamId: null, refereePlayerId: null, goals: [] },
-  { id: 'm10', stage: 'final', date: '16:22', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝戦', refereeTeamId: null, refereePlayerId: null, goals: [] },
+  { id: 'm7', stage: 'third_place', date: '15:07', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '三位決定戦', refereeTeamId: null, refereePlayerId: null, goals: [] },
+  { id: 'm8', stage: 'final', date: '15:32', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝戦', refereeTeamId: null, refereePlayerId: null, goals: [] },
 ];
 
 // Helper to calculate standings
