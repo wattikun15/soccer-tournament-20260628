@@ -1,7 +1,7 @@
 export const initialTeams = [
-  { id: 't1', name: '百式', emoji: '⚡' },
   { id: 't2', name: 'GA', emoji: '🦁' },
   { id: 't3', name: 'ケンFC', emoji: '🦅' },
+  { id: 't1', name: '百式', emoji: '⚡' },
   { id: 't4', name: '囲町FC', emoji: '🟥' },
 ];
 
