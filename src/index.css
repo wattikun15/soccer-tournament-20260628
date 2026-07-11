@@ -516,6 +516,7 @@ h2 { font-size: 1.25rem; }
   .print-stats-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
     font-size: 8pt;
   }
 

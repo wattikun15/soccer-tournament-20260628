@@ -559,7 +559,7 @@ function App() {
 function PrintScorecard({ matches, getTeam }) {
   const leagueMatches = matches.filter(m => m.stage === 'league');
   const knockoutMatches = matches.filter(m => m.stage !== 'league');
-  const teams = [...new Set(leagueMatches.flatMap(m => [m.homeId, m.awayId]))].map(id => getTeam(id)).filter(Boolean);
+  const teams = initialTeams.filter(t => leagueMatches.some(m => m.homeId === t.id || m.awayId === t.id));
 
   const renderMatchCard = (match) => {
     const home = getTeam(match.homeId);
@@ -572,13 +572,13 @@ function PrintScorecard({ matches, getTeam }) {
           <span className="print-match-time">{match.date}〜</span>
         </div>
         <div className="print-teams-row">
-          <span className="print-team-name">{home?.name || '予選＿位'}</span>
+          {home ? <span className="print-team-name">{home.name}</span> : <span className="print-team-name" style={{borderBottom:'1pt solid #000',minWidth:'25mm'}}>&nbsp;</span>}
           <div className="print-score-box">
             <div className="print-score-cell"></div>
             <span>−</span>
             <div className="print-score-cell"></div>
           </div>
-          <span className="print-team-name">{away?.name || '予選＿位'}</span>
+          {away ? <span className="print-team-name">{away.name}</span> : <span className="print-team-name" style={{borderBottom:'1pt solid #000',minWidth:'25mm'}}>&nbsp;</span>}
         </div>
         <table className="print-detail-table">
           <tbody>
