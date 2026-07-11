@@ -557,69 +557,93 @@ function App() {
 
 // ===== Print Scorecard Component =====
 function PrintScorecard({ matches, getTeam }) {
+  const leagueMatches = matches.filter(m => m.stage === 'league');
+  const knockoutMatches = matches.filter(m => m.stage !== 'league');
+  const teams = [...new Set(leagueMatches.flatMap(m => [m.homeId, m.awayId]))].map(id => getTeam(id)).filter(Boolean);
+
+  const renderMatchCard = (match) => {
+    const home = getTeam(match.homeId);
+    const away = getTeam(match.awayId);
+    const referee = getTeam(match.refereeTeamId);
+    return (
+      <div key={match.id} className="print-match">
+        <div className="print-match-header">
+          <span className="print-match-label">{match.label}</span>
+          <span className="print-match-time">{match.date}〜</span>
+        </div>
+        <div className="print-teams-row">
+          <span className="print-team-name">{home?.name || '予選＿位'}</span>
+          <div className="print-score-box">
+            <div className="print-score-cell"></div>
+            <span>−</span>
+            <div className="print-score-cell"></div>
+          </div>
+          <span className="print-team-name">{away?.name || '予選＿位'}</span>
+        </div>
+        <table className="print-detail-table">
+          <tbody>
+            <tr><th>得点者</th><td></td></tr>
+            <tr><th>ｱｼｽﾄ</th><td></td></tr>
+            <tr><th>主審</th><td className="print-ref-cell">{referee ? `${referee.name}：` : ''}</td></tr>
+            <tr><th>備考</th><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <div className="print-only print-scorecard">
-      {/* Page title */}
-      <div className="print-title">
-        <h1>一般ミニサッカー大会 記録用紙</h1>
-        <p>開催日：2026年7月12日（土）　会場：平和の森公園</p>
+      {/* Page 1: League */}
+      <div className="print-page">
+        <div className="print-title">
+          <h1>予選リーグ 記録用紙</h1>
+          <p>開催日：2026年7月12日（土）　会場：平和の森公園</p>
+        </div>
+        <div className="print-grid">
+          {leagueMatches.map(renderMatchCard)}
+        </div>
+        {/* Stats summary table */}
+        <div style={{marginTop: '4mm'}}>
+          <table className="print-stats-table">
+            <thead>
+              <tr>
+                <th>チーム</th>
+                <th>勝</th><th>分</th><th>負</th>
+                <th>得点</th><th>失点</th><th>得失差</th>
+                <th>赤</th><th>黄</th><th>ファール</th>
+                <th>順位</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teams.map(t => (
+                <tr key={t.id}>
+                  <td style={{fontWeight: 700, textAlign: 'left'}}>{t.name}</td>
+                  <td></td><td></td><td></td>
+                  <td></td><td></td><td></td>
+                  <td></td><td></td><td></td>
+                  <td></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Match grid - 2 columns */}
-      <div className="print-grid">
-        {matches.map((match) => {
-          const home = getTeam(match.homeId);
-          const away = getTeam(match.awayId);
-          const referee = getTeam(match.refereeTeamId);
-          return (
-            <div key={match.id} className="print-match">
-              {/* Match header */}
-              <div className="print-match-header">
-                <span className="print-match-label">{match.label}</span>
-                <span className="print-match-time">{match.date}〜</span>
-              </div>
-
-              {/* Teams & Score */}
-              <div className="print-teams-row">
-                <span className="print-team-name">{home?.name || '予選＿位'}</span>
-                <div className="print-score-box">
-                  <div className="print-score-cell"></div>
-                  <span>−</span>
-                  <div className="print-score-cell"></div>
-                </div>
-                <span className="print-team-name">{away?.name || '予選＿位'}</span>
-              </div>
-
-              {/* Detail rows */}
-              <table className="print-detail-table">
-                <tbody>
-                  <tr>
-                    <th>得点者</th>
-                    <td></td>
-                  </tr>
-                  <tr>
-                    <th>ｱｼｽﾄ</th>
-                    <td></td>
-                  </tr>
-                  <tr>
-                    <th>主審</th>
-                    <td className="print-ref-cell">
-                      {referee ? `${referee.name}：` : ''}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>備考</th>
-                    <td></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          );
-        })}
+      {/* Page 2: Knockout */}
+      <div className="print-page" style={{pageBreakBefore: 'always'}}>
+        <div className="print-title">
+          <h1>決勝トーナメント 記録用紙</h1>
+          <p>開催日：2026年7月12日（土）　会場：平和の森公園</p>
+        </div>
+        <div className="print-grid">
+          {knockoutMatches.map(renderMatchCard)}
+        </div>
       </div>
     </div>
   );
 }
+
 
 function ScheduleView({ matches, getTeam, getPlayer, onMatchClick }) {
   const [stage, setStage] = useState('league'); // 'league', 'tournament', 'timetable'
