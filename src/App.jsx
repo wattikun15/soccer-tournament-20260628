@@ -1069,7 +1069,7 @@ function TeamsView({ teams, members, setMembers }) {
                 transition: 'all 0.2s'
               }}
             >
-              {checkMode ? '✏️ 編集モード' : '✅ チェックモード'}
+              {checkMode ? '✅ 完了' : '✅ チェックモード'}
             </button>
           </div>
         </div>
