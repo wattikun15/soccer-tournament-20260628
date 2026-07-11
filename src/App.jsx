@@ -603,8 +603,32 @@ function PrintScorecard({ matches, getTeam }) {
         <div className="print-grid">
           {leagueMatches.map(renderMatchCard)}
         </div>
-        {/* Stats summary table */}
+        {/* Win/Loss matrix */}
         <div style={{marginTop: '4mm'}}>
+          <table className="print-stats-table">
+            <thead>
+              <tr>
+                <th>対戦成績</th>
+                {teams.map(t => <th key={t.id}>{t.name}</th>)}
+                <th>勝点</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teams.map(t => (
+                <tr key={t.id}>
+                  <td style={{fontWeight: 700, textAlign: 'left'}}>{t.name}</td>
+                  {teams.map(t2 => (
+                    <td key={t2.id} style={t.id === t2.id ? {background: '#d0d0d0'} : {}}>{t.id === t2.id ? '―' : ''}</td>
+                  ))}
+                  <td></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{fontSize: '7pt', marginTop: '1mm', color: '#666'}}>○勝ち　△引分　×負け　※スコアも記入可</div>
+        </div>
+        {/* Stats summary table */}
+        <div style={{marginTop: '3mm'}}>
           <table className="print-stats-table">
             <thead>
               <tr>
