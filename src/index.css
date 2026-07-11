@@ -356,3 +356,164 @@ h2 { font-size: 1.25rem; }
 .edit-input:focus {
   border-color: var(--accent-color);
 }
+
+/* ===== Print Scorecard Styles ===== */
+
+/* Hidden on screen */
+.print-only {
+  display: none !important;
+}
+
+/* Print media */
+@media print {
+  /* Hide everything except print-only */
+  .no-print,
+  .bottom-nav,
+  .modal-overlay {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    margin: 0;
+    padding: 0;
+  }
+
+  .container {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* Scorecard layout */
+  .print-scorecard {
+    padding: 8mm 6mm;
+    font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif;
+  }
+
+  .print-title {
+    text-align: center;
+    margin-bottom: 4mm;
+    border-bottom: 2px solid #000;
+    padding-bottom: 2mm;
+  }
+
+  .print-title h1 {
+    font-size: 14pt;
+    margin: 0;
+    color: #000;
+  }
+
+  .print-title p {
+    font-size: 9pt;
+    margin: 2px 0 0;
+    color: #333;
+  }
+
+  /* 2-column grid */
+  .print-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3mm;
+  }
+
+  /* Each match card */
+  .print-match {
+    border: 1.5pt solid #000;
+    border-radius: 2mm;
+    padding: 2mm 3mm;
+    page-break-inside: avoid;
+  }
+
+  .print-match-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1pt solid #999;
+    padding-bottom: 1mm;
+    margin-bottom: 1.5mm;
+  }
+
+  .print-match-label {
+    font-weight: 700;
+    font-size: 9pt;
+  }
+
+  .print-match-time {
+    font-size: 8.5pt;
+    color: #444;
+  }
+
+  /* Teams & Score row */
+  .print-teams-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3mm;
+    margin-bottom: 2mm;
+  }
+
+  .print-team-name {
+    font-weight: 700;
+    font-size: 10pt;
+    min-width: 22mm;
+    text-align: center;
+  }
+
+  .print-score-box {
+    display: flex;
+    align-items: center;
+    gap: 2mm;
+    font-size: 12pt;
+    font-weight: 700;
+  }
+
+  .print-score-cell {
+    width: 10mm;
+    height: 10mm;
+    border: 1.5pt solid #000;
+    border-radius: 1mm;
+  }
+
+  /* Detail table */
+  .print-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+  }
+
+  .print-detail-table th {
+    width: 14mm;
+    text-align: left;
+    font-weight: 600;
+    padding: 1.5mm 1.5mm;
+    border: 0.5pt solid #aaa;
+    background: #f0f0f0;
+    vertical-align: top;
+    white-space: nowrap;
+    font-size: 7.5pt;
+  }
+
+  .print-detail-table td {
+    padding: 1.5mm 2mm;
+    border: 0.5pt solid #aaa;
+    height: 8mm;
+    vertical-align: top;
+    font-size: 8pt;
+  }
+
+  .print-ref-cell {
+    color: #555;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+}

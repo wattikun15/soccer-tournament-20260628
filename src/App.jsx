@@ -250,23 +250,45 @@ function App() {
     );
   }
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="container">
       {/* Header */}
-      <header className="header">
+      <header className="header no-print">
         <h1>一般ミニサッカー大会@平和の森公園</h1>
         <div className="team-logo" style={{width: 36, height: 36, fontSize: '1.2rem'}}>🏆</div>
       </header>
 
       {/* Main Content Area */}
-      <main>
+      <main className="no-print">
         {activeTab === 'schedule' && (
-          <ScheduleView 
-            matches={matches} 
-            getTeam={getTeam} 
-            getPlayer={getPlayer}
-            onMatchClick={handleMatchClick} 
-          />
+          <>
+            <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: 12}}>
+              <button
+                onClick={handlePrint}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)',
+                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
+                onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
+              >
+                🖨️ 記録用紙(PDF)
+              </button>
+            </div>
+            <ScheduleView 
+              matches={matches} 
+              getTeam={getTeam} 
+              getPlayer={getPlayer}
+              onMatchClick={handleMatchClick} 
+            />
+          </>
         )}
         
         {activeTab === 'standings' && (
@@ -286,6 +308,9 @@ function App() {
           />
         )}
       </main>
+
+      {/* Print-only Scorecard */}
+      <PrintScorecard matches={matches} getTeam={getTeam} />
 
       {/* Bottom Navigation */}
       <nav className="bottom-nav">
@@ -525,6 +550,72 @@ function App() {
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== Print Scorecard Component =====
+function PrintScorecard({ matches, getTeam }) {
+  return (
+    <div className="print-only print-scorecard">
+      {/* Page title */}
+      <div className="print-title">
+        <h1>一般ミニサッカー大会 記録用紙</h1>
+        <p>開催日：2026年7月12日（土）　会場：平和の森公園</p>
+      </div>
+
+      {/* Match grid - 2 columns */}
+      <div className="print-grid">
+        {matches.map((match) => {
+          const home = getTeam(match.homeId);
+          const away = getTeam(match.awayId);
+          const referee = getTeam(match.refereeTeamId);
+          return (
+            <div key={match.id} className="print-match">
+              {/* Match header */}
+              <div className="print-match-header">
+                <span className="print-match-label">{match.label}</span>
+                <span className="print-match-time">{match.date}〜</span>
+              </div>
+
+              {/* Teams & Score */}
+              <div className="print-teams-row">
+                <span className="print-team-name">{home?.name || '予選＿位'}</span>
+                <div className="print-score-box">
+                  <div className="print-score-cell"></div>
+                  <span>−</span>
+                  <div className="print-score-cell"></div>
+                </div>
+                <span className="print-team-name">{away?.name || '予選＿位'}</span>
+              </div>
+
+              {/* Detail rows */}
+              <table className="print-detail-table">
+                <tbody>
+                  <tr>
+                    <th>得点者</th>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <th>ｱｼｽﾄ</th>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <th>主審</th>
+                    <td className="print-ref-cell">
+                      {referee ? `${referee.name}：` : ''}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>備考</th>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
