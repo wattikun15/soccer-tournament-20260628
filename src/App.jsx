@@ -310,7 +310,7 @@ function App() {
       </main>
 
       {/* Print-only Scorecard */}
-      <PrintScorecard matches={matches} getTeam={getTeam} />
+      <PrintScorecard matches={matches} getTeam={getTeam} getPlayer={getPlayer} standings={standings} />
 
       {/* Bottom Navigation */}
       <nav className="bottom-nav">
@@ -556,15 +556,65 @@ function App() {
 }
 
 // ===== Print Scorecard Component =====
-function PrintScorecard({ matches, getTeam }) {
+function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
   const leagueMatches = matches.filter(m => m.stage === 'league');
   const knockoutMatches = matches.filter(m => m.stage !== 'league');
   const teams = initialTeams.filter(t => leagueMatches.some(m => m.homeId === t.id || m.awayId === t.id));
+
+  const getMatrixResult = (team1Id, team2Id) => {
+    if (team1Id === team2Id) return '―';
+    const match = leagueMatches.find(m => 
+      (m.homeId === team1Id && m.awayId === team2Id) || 
+      (m.homeId === team2Id && m.awayId === team1Id)
+    );
+    if (!match || match.status !== 'finished') return '';
+    const isHome = match.homeId === team1Id;
+    const t1Score = isHome ? match.homeScore : match.awayScore;
+    const t2Score = isHome ? match.awayScore : match.homeScore;
+    if (t1Score > t2Score) return '○';
+    if (t1Score < t2Score) return '×';
+    return '△';
+  };
+
+  const getTeamStats = (teamId) => {
+    return standings.find(s => s.id === teamId) || {
+      played: 0, points: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0
+    };
+  };
+
+  const getTeamRank = (teamId) => {
+    const idx = standings.findIndex(s => s.id === teamId);
+    if (idx === -1) return '';
+    const stats = standings[idx];
+    if (stats.played === 0) return '';
+    return idx + 1;
+  };
 
   const renderMatchCard = (match) => {
     const home = getTeam(match.homeId);
     const away = getTeam(match.awayId);
     const referee = getTeam(match.refereeTeamId);
+    
+    const formatPlayer = (pId) => {
+      if (!pId) return '';
+      const p = getPlayer(pId);
+      return p ? `${p.name}(#${p.number})` : '';
+    };
+
+    const renderGoals = (teamId) => {
+      if (!match.goals) return '';
+      const teamGoals = match.goals.filter(g => g.teamId === teamId && g.scorerId);
+      return teamGoals.map(g => formatPlayer(g.scorerId)).join('、');
+    };
+
+    const renderAssists = (teamId) => {
+      if (!match.goals) return '';
+      const teamGoals = match.goals.filter(g => g.teamId === teamId && g.assistId);
+      return teamGoals.map(g => formatPlayer(g.assistId)).join('、');
+    };
+
+    const isFinished = match.status === 'finished';
+
     return (
       <div key={match.id} className="print-match">
         <div className="print-match-header">
@@ -574,18 +624,34 @@ function PrintScorecard({ matches, getTeam }) {
         <div className="print-teams-row">
           {home ? <span className="print-team-name">{home.name}</span> : <span className="print-team-name" style={{borderBottom:'1pt solid #000',minWidth:'25mm'}}>&nbsp;</span>}
           <div className="print-score-box">
-            <div className="print-score-cell"></div>
+            <div className="print-score-cell">{isFinished ? match.homeScore : ''}</div>
             <span>−</span>
-            <div className="print-score-cell"></div>
+            <div className="print-score-cell">{isFinished ? match.awayScore : ''}</div>
           </div>
           {away ? <span className="print-team-name">{away.name}</span> : <span className="print-team-name" style={{borderBottom:'1pt solid #000',minWidth:'25mm'}}>&nbsp;</span>}
         </div>
         <table className="print-detail-table">
           <tbody>
-            <tr><th>得点者</th><td></td></tr>
-            <tr><th>ｱｼｽﾄ</th><td></td></tr>
-            <tr><th>主審</th><td className="print-ref-cell">{referee ? `${referee.name}：` : ''}</td></tr>
-            <tr><th>備考</th><td></td></tr>
+            <tr>
+              <th>得点者</th>
+              <td style={{width: '43%'}}>{renderGoals(match.homeId)}</td>
+              <td style={{width: '43%'}}>{renderGoals(match.awayId)}</td>
+            </tr>
+            <tr>
+              <th>ｱｼｽﾄ</th>
+              <td>{renderAssists(match.homeId)}</td>
+              <td>{renderAssists(match.awayId)}</td>
+            </tr>
+            <tr>
+              <th>主審</th>
+              <td colSpan="2" className="print-ref-cell">
+                {match.refereePlayerId ? formatPlayer(match.refereePlayerId) : (referee ? `${referee.name}：` : '')}
+              </td>
+            </tr>
+            <tr>
+              <th>備考</th>
+              <td colSpan="2"></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -614,15 +680,20 @@ function PrintScorecard({ matches, getTeam }) {
               </tr>
             </thead>
             <tbody>
-              {teams.map(t => (
-                <tr key={t.id}>
-                  <td style={{fontWeight: 700, textAlign: 'left'}}>{t.name}</td>
-                  {teams.map(t2 => (
-                    <td key={t2.id} style={t.id === t2.id ? {background: '#d0d0d0'} : {}}>{t.id === t2.id ? '―' : ''}</td>
-                  ))}
-                  <td></td>
-                </tr>
-              ))}
+              {teams.map(t => {
+                const stats = getTeamStats(t.id);
+                return (
+                  <tr key={t.id}>
+                    <td style={{fontWeight: 700, textAlign: 'left'}}>{t.name}</td>
+                    {teams.map(t2 => (
+                      <td key={t2.id} style={t.id === t2.id ? {background: '#d0d0d0'} : {}}>
+                        {getMatrixResult(t.id, t2.id)}
+                      </td>
+                    ))}
+                    <td>{stats.played > 0 ? stats.points : ''}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <div style={{fontSize: '7pt', marginTop: '1mm', color: '#666'}}>○勝ち　△引分　×負け　※スコアも記入可</div>
@@ -640,15 +711,24 @@ function PrintScorecard({ matches, getTeam }) {
               </tr>
             </thead>
             <tbody>
-              {teams.map(t => (
-                <tr key={t.id}>
-                  <td style={{fontWeight: 700, textAlign: 'left'}}>{t.name}</td>
-                  <td></td><td></td><td></td>
-                  <td></td><td></td><td></td>
-                  <td></td><td></td><td></td>
-                  <td></td>
-                </tr>
-              ))}
+              {teams.map(t => {
+                const stats = getTeamStats(t.id);
+                return (
+                  <tr key={t.id}>
+                    <td style={{fontWeight: 700, textAlign: 'left'}}>{t.name}</td>
+                    <td>{stats.played > 0 ? stats.won : ''}</td>
+                    <td>{stats.played > 0 ? stats.drawn : ''}</td>
+                    <td>{stats.played > 0 ? stats.lost : ''}</td>
+                    <td>{stats.played > 0 ? stats.goalsFor : ''}</td>
+                    <td>{stats.played > 0 ? stats.goalsAgainst : ''}</td>
+                    <td>{stats.played > 0 ? (stats.goalsFor - stats.goalsAgainst > 0 ? '+' : '') + (stats.goalsFor - stats.goalsAgainst) : ''}</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>{getTeamRank(t.id)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
