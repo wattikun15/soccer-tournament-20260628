@@ -632,7 +632,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
     const renderAllGoals = () => {
       if (printMode === 'blank' || !match.goals || match.goals.length === 0) return null;
       return (
-        <div style={{display: 'flex', flexDirection: 'column', gap: '1mm', fontSize: '7.5pt', alignItems: 'center', justifyContent: 'center', height: '100%'}}>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '1.5mm', fontSize: '9pt', justifyContent: 'center', height: '100%', paddingLeft: '4mm'}}>
           {match.goals.map((g, idx) => {
             const team = getTeam(g.teamId);
             const teamName = team ? `[${team.name}] ` : '';
