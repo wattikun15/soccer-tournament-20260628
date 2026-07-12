@@ -602,15 +602,18 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
     };
 
     const renderGoals = (teamId) => {
-      if (!match.goals) return '';
-      const teamGoals = match.goals.filter(g => g.teamId === teamId && g.scorerId);
-      return teamGoals.map(g => formatPlayer(g.scorerId)).join('、');
-    };
-
-    const renderAssists = (teamId) => {
-      if (!match.goals) return '';
-      const teamGoals = match.goals.filter(g => g.teamId === teamId && g.assistId);
-      return teamGoals.map(g => formatPlayer(g.assistId)).join('、');
+      if (!match.goals) return null;
+      const teamGoals = match.goals.filter(g => g.teamId === teamId);
+      if (teamGoals.length === 0) return null;
+      return (
+        <div style={{display: 'flex', flexDirection: 'column', gap: '1mm', fontSize: '7.5pt'}}>
+          {teamGoals.map((g, idx) => {
+            const scorerStr = g.scorerId ? formatPlayer(g.scorerId) : '未入力';
+            const assistStr = g.assistId ? ` [A:${formatPlayer(g.assistId)}]` : '';
+            return <div key={g.id}>{idx + 1}. {scorerStr}{assistStr}</div>;
+          })}
+        </div>
+      );
     };
 
     const isFinished = match.status === 'finished';
@@ -633,14 +636,9 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
         <table className="print-detail-table">
           <tbody>
             <tr>
-              <th>得点者</th>
-              <td style={{width: '43%'}}>{renderGoals(match.homeId)}</td>
-              <td style={{width: '43%'}}>{renderGoals(match.awayId)}</td>
-            </tr>
-            <tr>
-              <th>ｱｼｽﾄ</th>
-              <td>{renderAssists(match.homeId)}</td>
-              <td>{renderAssists(match.awayId)}</td>
+              <th>得点<br/><span style={{fontSize:'6pt',fontWeight:'normal'}}>(ｱｼｽﾄ)</span></th>
+              <td style={{width: '43%', height: '16mm'}}>{renderGoals(match.homeId)}</td>
+              <td style={{width: '43%', height: '16mm'}}>{renderGoals(match.awayId)}</td>
             </tr>
             <tr>
               <th>主審</th>
