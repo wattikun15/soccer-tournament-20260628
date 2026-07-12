@@ -666,7 +666,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
           <tbody>
             <tr>
               <th>得点<br/><span style={{fontSize:'6pt',fontWeight:'normal'}}>(ｱｼｽﾄ)</span></th>
-              <td colSpan="2" style={{height: '16mm'}}>{renderAllGoals()}</td>
+              <td colSpan="2" style={{height: printMode === 'blank' ? '28mm' : '16mm'}}>{renderAllGoals()}</td>
             </tr>
             <tr>
               <th>主審</th>
