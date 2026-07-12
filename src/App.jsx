@@ -1064,11 +1064,43 @@ function StandingsView({ standings, matches, members, getTeam }) {
     });
   };
 
-  // 同率時のソート: チーム順位(standings配列順) → 背番号昇順
+  const getTeamSortValue = (teamId) => {
+    const finalMatch = matches.find(m => m.stage === 'final');
+    const thirdMatch = matches.find(m => m.stage === 'third_place');
+    
+    if (finalMatch && finalMatch.status === 'finished') {
+      if (finalMatch.homeScore > finalMatch.awayScore) {
+        if (teamId === finalMatch.homeId) return 1;
+        if (teamId === finalMatch.awayId) return 2;
+      } else if (finalMatch.awayScore > finalMatch.homeScore) {
+        if (teamId === finalMatch.awayId) return 1;
+        if (teamId === finalMatch.homeId) return 2;
+      } else {
+        if (teamId === finalMatch.homeId || teamId === finalMatch.awayId) return 1.5;
+      }
+    }
+    
+    if (thirdMatch && thirdMatch.status === 'finished') {
+      if (thirdMatch.homeScore > thirdMatch.awayScore) {
+        if (teamId === thirdMatch.homeId) return 3;
+        if (teamId === thirdMatch.awayId) return 4;
+      } else if (thirdMatch.awayScore > thirdMatch.homeScore) {
+        if (teamId === thirdMatch.awayId) return 3;
+        if (teamId === thirdMatch.homeId) return 4;
+      } else {
+        if (teamId === thirdMatch.homeId || teamId === thirdMatch.awayId) return 3.5;
+      }
+    }
+    
+    const idx = standings.findIndex(t => t.id === teamId);
+    return idx !== -1 ? idx + 10 : 99;
+  };
+
+  // 同率時のソート: チーム最終順位(決勝結果優先、未了なら予選順位) → 背番号昇順
   const rankSort = (key) => (a, b) => {
     if (b[key] !== a[key]) return b[key] - a[key];
-    const aPos = standings.findIndex(t => t.id === a.teamId);
-    const bPos = standings.findIndex(t => t.id === b.teamId);
+    const aPos = getTeamSortValue(a.teamId);
+    const bPos = getTeamSortValue(b.teamId);
     if (aPos !== bPos) return aPos - bPos;
     const aNum = Number(a.number) || 9999;
     const bNum = Number(b.number) || 9999;
