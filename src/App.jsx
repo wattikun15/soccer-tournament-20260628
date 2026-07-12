@@ -687,8 +687,8 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
   const renderFinalRanking = () => {
     if (printMode !== 'result') return null;
     
-    const finalMatch = knockoutMatches.find(m => m.id === 'm_final');
-    const thirdMatch = knockoutMatches.find(m => m.id === 'm_3rd');
+    const finalMatch = knockoutMatches.find(m => m.stage === 'final');
+    const thirdMatch = knockoutMatches.find(m => m.stage === 'third_place');
     
     let first = '', second = '', third = '', fourth = '';
     
