@@ -13,6 +13,7 @@ function App() {
   const [members, setMembers] = useState(initialMembers);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [printMode, setPrintMode] = useState('blank');
 
   // Helper functions to save data to cloud
   const saveMatchesToCloud = async (updatedMatches) => {
@@ -251,8 +252,9 @@ function App() {
     );
   }
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = (mode) => {
+    setPrintMode(mode);
+    setTimeout(() => window.print(), 100);
   };
 
   return (
@@ -267,9 +269,9 @@ function App() {
       <main className="no-print">
         {activeTab === 'schedule' && (
           <>
-            <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: 12}}>
+            <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: 12, gap: 12}}>
               <button
-                onClick={handlePrint}
+                onClick={() => handlePrint('blank')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '8px 16px', borderRadius: 8, border: 'none',
@@ -281,6 +283,20 @@ function App() {
                 onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
               >
                 🖨️ 記録用紙(PDF)
+              </button>
+              <button
+                onClick={() => handlePrint('result')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  background: 'var(--accent-color)', color: '#fff',
+                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => { e.target.style.opacity = '0.8'; }}
+                onMouseLeave={e => { e.target.style.opacity = '1'; }}
+              >
+                📊 試合結果(PDF)
               </button>
             </div>
             <ScheduleView 
@@ -311,7 +327,7 @@ function App() {
       </main>
 
       {/* Print-only Scorecard */}
-      <PrintScorecard matches={matches} getTeam={getTeam} getPlayer={getPlayer} standings={standings} />
+      <PrintScorecard matches={matches} getTeam={getTeam} getPlayer={getPlayer} standings={standings} printMode={printMode} />
 
       {/* Bottom Navigation */}
       <nav className="bottom-nav">
@@ -568,7 +584,7 @@ function App() {
 }
 
 // ===== Print Scorecard Component =====
-function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
+function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
   const leagueMatches = matches.filter(m => m.stage === 'league');
   const knockoutMatches = matches.filter(m => m.stage !== 'league');
   const teams = initialTeams.filter(t => leagueMatches.some(m => m.homeId === t.id || m.awayId === t.id));
@@ -614,9 +630,9 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
     };
 
     const renderAllGoals = () => {
-      if (!match.goals || match.goals.length === 0) return null;
+      if (printMode === 'blank' || !match.goals || match.goals.length === 0) return null;
       return (
-        <div style={{display: 'flex', flexDirection: 'column', gap: '1mm', fontSize: '7.5pt', textAlign: 'left', paddingLeft: '2mm'}}>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '1mm', fontSize: '7.5pt', alignItems: 'center', justifyContent: 'center', height: '100%'}}>
           {match.goals.map((g, idx) => {
             const team = getTeam(g.teamId);
             const teamName = team ? `[${team.name}] ` : '';
@@ -629,7 +645,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
       );
     };
 
-    const isFinished = match.status === 'finished';
+    const isFinished = printMode === 'result' && match.status === 'finished';
 
     return (
       <div key={match.id} className="print-match">
@@ -668,12 +684,62 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
     );
   };
 
+  const renderFinalRanking = () => {
+    if (printMode !== 'result') return null;
+    
+    const finalMatch = knockoutMatches.find(m => m.id === 'm_final');
+    const thirdMatch = knockoutMatches.find(m => m.id === 'm_3rd');
+    
+    let first = '', second = '', third = '', fourth = '';
+    
+    if (finalMatch && finalMatch.status === 'finished') {
+      if (finalMatch.homeScore > finalMatch.awayScore) {
+        first = getTeam(finalMatch.homeId)?.name || '';
+        second = getTeam(finalMatch.awayId)?.name || '';
+      } else if (finalMatch.homeScore < finalMatch.awayScore) {
+        first = getTeam(finalMatch.awayId)?.name || '';
+        second = getTeam(finalMatch.homeId)?.name || '';
+      } else {
+        // PK logic could be added if needed, fallback to tie
+        first = getTeam(finalMatch.homeId)?.name || '';
+        second = getTeam(finalMatch.awayId)?.name || '';
+      }
+    }
+    
+    if (thirdMatch && thirdMatch.status === 'finished') {
+      if (thirdMatch.homeScore > thirdMatch.awayScore) {
+        third = getTeam(thirdMatch.homeId)?.name || '';
+        fourth = getTeam(thirdMatch.awayId)?.name || '';
+      } else if (thirdMatch.homeScore < thirdMatch.awayScore) {
+        third = getTeam(thirdMatch.awayId)?.name || '';
+        fourth = getTeam(thirdMatch.homeId)?.name || '';
+      } else {
+        third = getTeam(thirdMatch.homeId)?.name || '';
+        fourth = getTeam(thirdMatch.awayId)?.name || '';
+      }
+    }
+
+    if (!first && !second && !third && !fourth) return null;
+
+    return (
+      <div style={{marginTop: '10mm', padding: '4mm', border: '1pt solid #333', borderRadius: '4px', textAlign: 'center'}}>
+        <h2 style={{margin: '0 0 3mm 0', fontSize: '1rem'}}>🏆 最終順位 🏆</h2>
+        <div style={{display: 'flex', justifyContent: 'space-around', fontSize: '1rem', fontWeight: 'bold'}}>
+          <div>優勝: <span style={{fontSize: '1.2rem', color: '#b8860b'}}>{first || '---'}</span></div>
+          <div>準優勝: <span style={{fontSize: '1.1rem'}}>{second || '---'}</span></div>
+          <div>第3位: <span style={{fontSize: '1rem'}}>{third || '---'}</span></div>
+          <div>第4位: <span style={{fontSize: '0.9rem'}}>{fourth || '---'}</span></div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="print-only print-scorecard">
       {/* Page 1: League */}
       <div className="print-page">
         <div className="print-title">
-          <h1>予選リーグ 記録用紙</h1>
+          <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
           <p>開催日：2026年7月12日（土）　会場：本五ふれあい公園</p>
         </div>
         <div className="print-grid">
@@ -684,7 +750,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
       {/* Page 2: League Stats */}
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
-          <h1>予選リーグ 星取表・集計表</h1>
+          <h1>予選リーグ 星取表・集計表 {printMode === 'result' ? '(結果)' : ''}</h1>
           <p>開催日：2026年7月12日（土）　会場：本五ふれあい公園</p>
         </div>
         {/* Win/Loss matrix */}
@@ -699,13 +765,13 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
             </thead>
             <tbody>
               {teams.map(t => {
-                const stats = getTeamStats(t.id);
+                const stats = printMode === 'result' ? getTeamStats(t.id) : {played: 0, points: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0};
                 return (
                   <tr key={t.id}>
                     <td style={{fontWeight: 700, textAlign: 'left'}}>{t.name}</td>
                     {teams.map(t2 => (
                       <td key={t2.id} style={t.id === t2.id ? {background: '#d0d0d0'} : {}}>
-                        {getMatrixResult(t.id, t2.id)}
+                        {printMode === 'result' ? getMatrixResult(t.id, t2.id) : (t.id === t2.id ? '―' : '')}
                       </td>
                     ))}
                     <td>{stats.played > 0 ? stats.points : ''}</td>
@@ -730,7 +796,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
             </thead>
             <tbody>
               {teams.map(t => {
-                const stats = getTeamStats(t.id);
+                const stats = printMode === 'result' ? getTeamStats(t.id) : {played: 0, points: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0};
                 return (
                   <tr key={t.id}>
                     <td style={{fontWeight: 700, textAlign: 'left'}}>{t.name}</td>
@@ -743,7 +809,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td>{getTeamRank(t.id)}</td>
+                    <td>{printMode === 'result' ? getTeamRank(t.id) : ''}</td>
                   </tr>
                 );
               })}
@@ -755,12 +821,14 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
       {/* Page 3: Knockout */}
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
-          <h1>決勝トーナメント 記録用紙</h1>
+          <h1>決勝トーナメント {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
           <p>開催日：2026年7月12日（土）　会場：本五ふれあい公園</p>
         </div>
         <div className="print-grid">
           {knockoutMatches.map(renderMatchCard)}
         </div>
+        
+        {renderFinalRanking()}
       </div>
     </div>
   );
