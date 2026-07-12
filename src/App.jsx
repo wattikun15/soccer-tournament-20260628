@@ -1075,9 +1075,18 @@ function StandingsView({ standings, matches, members, getTeam }) {
     return aNum - bNum;
   };
 
-  const personalList = getPersonalStats();
-  const goalRankings = [...personalList].filter(p => p.goals > 0).sort(rankSort('goals'));
-  const assistRankings = [...personalList].filter(p => p.assists > 0).sort(rankSort('assists'));
+  const assignRanks = (list, key) => {
+    let currentRank = 1;
+    return list.map((item, index) => {
+      if (index > 0 && item[key] < list[index - 1][key]) {
+        currentRank = index + 1;
+      }
+      return { ...item, _rank: currentRank };
+    });
+  };
+
+  const goalRankings = assignRanks([...personalList].filter(p => p.goals > 0).sort(rankSort('goals')), 'goals');
+  const assistRankings = assignRanks([...personalList].filter(p => p.assists > 0).sort(rankSort('assists')), 'assists');
 
   // CSVダウンロード関数
   const downloadCSV = () => {
@@ -1121,16 +1130,16 @@ function StandingsView({ standings, matches, members, getTeam }) {
     // ── 得点ランキング ──
     rows.push(['【得点ランキング】']);
     rows.push(['順位', 'チーム', '氏名', '背番号', '得点数']);
-    goalRankings.forEach((p, i) => {
-      rows.push([i + 1, p.teamName, p.name, p.number, p.goals]);
+    goalRankings.forEach((p) => {
+      rows.push([p._rank, p.teamName, p.name, p.number, p.goals]);
     });
     rows.push([]);
 
     // ── アシストランキング ──
     rows.push(['【アシストランキング】']);
     rows.push(['順位', 'チーム', '氏名', '背番号', 'アシスト数']);
-    assistRankings.forEach((p, i) => {
-      rows.push([i + 1, p.teamName, p.name, p.number, p.assists]);
+    assistRankings.forEach((p) => {
+      rows.push([p._rank, p.teamName, p.name, p.number, p.assists]);
     });
     rows.push([]);
 
@@ -1209,10 +1218,10 @@ function StandingsView({ standings, matches, members, getTeam }) {
               </tr>
             </thead>
             <tbody>
-              {goalRankings.map((player, idx) => (
+              {goalRankings.map((player) => (
                 <tr key={player.id}>
                   <td style={{paddingLeft: '16px', textAlign: 'left'}}>
-                    <span style={{color: 'var(--text-secondary)', marginRight: 8, fontSize: '0.8rem'}}>{idx + 1}</span>
+                    <span style={{color: 'var(--text-secondary)', marginRight: 8, fontSize: '0.8rem'}}>{player._rank}</span>
                     {player.number ? `[${player.number}] ` : ''}{player.name}
                   </td>
                   <td>{player.teamEmoji} {player.teamName}</td>
@@ -1240,10 +1249,10 @@ function StandingsView({ standings, matches, members, getTeam }) {
               </tr>
             </thead>
             <tbody>
-              {assistRankings.map((player, idx) => (
+              {assistRankings.map((player) => (
                 <tr key={player.id}>
                   <td style={{paddingLeft: '16px', textAlign: 'left'}}>
-                    <span style={{color: 'var(--text-secondary)', marginRight: 8, fontSize: '0.8rem'}}>{idx + 1}</span>
+                    <span style={{color: 'var(--text-secondary)', marginRight: 8, fontSize: '0.8rem'}}>{player._rank}</span>
                     {player.number ? `[${player.number}] ` : ''}{player.name}
                   </td>
                   <td>{player.teamEmoji} {player.teamName}</td>
