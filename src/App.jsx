@@ -259,7 +259,7 @@ function App() {
     <div className="container">
       {/* Header */}
       <header className="header no-print">
-        <h1>一般ミニサッカー大会@平和の森公園</h1>
+        <h1>一般ミニサッカー大会@本五ふれあい公園</h1>
         <div className="team-logo" style={{width: 36, height: 36, fontSize: '1.2rem'}}>🏆</div>
       </header>
 
@@ -674,10 +674,18 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
       <div className="print-page">
         <div className="print-title">
           <h1>予選リーグ 記録用紙</h1>
-          <p>開催日：2026年7月12日（土）　会場：平和の森公園</p>
+          <p>開催日：2026年7月12日（土）　会場：本五ふれあい公園</p>
         </div>
         <div className="print-grid">
           {leagueMatches.map(renderMatchCard)}
+        </div>
+      </div>
+
+      {/* Page 2: League Stats */}
+      <div className="print-page" style={{pageBreakBefore: 'always'}}>
+        <div className="print-title">
+          <h1>予選リーグ 星取表・集計表</h1>
+          <p>開催日：2026年7月12日（土）　会場：本五ふれあい公園</p>
         </div>
         {/* Win/Loss matrix */}
         <div style={{marginTop: '4mm'}}>
@@ -744,11 +752,11 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
         </div>
       </div>
 
-      {/* Page 2: Knockout */}
+      {/* Page 3: Knockout */}
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>決勝トーナメント 記録用紙</h1>
-          <p>開催日：2026年7月12日（土）　会場：平和の森公園</p>
+          <p>開催日：2026年7月12日（土）　会場：本五ふれあい公園</p>
         </div>
         <div className="print-grid">
           {knockoutMatches.map(renderMatchCard)}
