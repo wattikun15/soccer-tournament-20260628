@@ -1085,6 +1085,7 @@ function StandingsView({ standings, matches, members, getTeam }) {
     });
   };
 
+  const personalList = getPersonalStats();
   const goalRankings = assignRanks([...personalList].filter(p => p.goals > 0).sort(rankSort('goals')), 'goals');
   const assistRankings = assignRanks([...personalList].filter(p => p.assists > 0).sort(rankSort('assists')), 'assists');
 
