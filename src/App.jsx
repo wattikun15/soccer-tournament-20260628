@@ -613,17 +613,17 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
       return p ? `${p.name}(#${p.number})` : '';
     };
 
-    const renderGoals = (teamId) => {
-      if (!match.goals) return null;
-      const teamGoals = match.goals.filter(g => g.teamId === teamId);
-      if (teamGoals.length === 0) return null;
+    const renderAllGoals = () => {
+      if (!match.goals || match.goals.length === 0) return null;
       return (
-        <div style={{display: 'flex', flexDirection: 'column', gap: '1mm', fontSize: '7.5pt'}}>
-          {teamGoals.map((g, idx) => {
+        <div style={{display: 'flex', flexDirection: 'column', gap: '1mm', fontSize: '7.5pt', textAlign: 'left', paddingLeft: '2mm'}}>
+          {match.goals.map((g, idx) => {
+            const team = getTeam(g.teamId);
+            const teamName = team ? `[${team.name}] ` : '';
             const scorerStr = g.scorerId ? formatPlayer(g.scorerId) : '未入力';
             const assistStr = g.assistId ? ` [A:${formatPlayer(g.assistId)}]` : '';
             const typeStr = g.type === 'pk' ? ' (PK)' : g.type === 'fk' ? ' (FK)' : '';
-            return <div key={g.id}>{idx + 1}. {scorerStr}{typeStr}{assistStr}</div>;
+            return <div key={g.id}>{idx + 1}. {teamName}{scorerStr}{typeStr}{assistStr}</div>;
           })}
         </div>
       );
@@ -650,8 +650,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
           <tbody>
             <tr>
               <th>得点<br/><span style={{fontSize:'6pt',fontWeight:'normal'}}>(ｱｼｽﾄ)</span></th>
-              <td style={{width: '43%', height: '16mm'}}>{renderGoals(match.homeId)}</td>
-              <td style={{width: '43%', height: '16mm'}}>{renderGoals(match.awayId)}</td>
+              <td colSpan="2" style={{height: '16mm'}}>{renderAllGoals()}</td>
             </tr>
             <tr>
               <th>主審</th>
