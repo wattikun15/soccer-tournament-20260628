@@ -147,7 +147,8 @@ function App() {
       id: 'g_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
       teamId,
       scorerId: null,
-      assistId: null
+      assistId: null,
+      type: 'normal'
     };
     const updatedGoals = [...selectedMatch.goals, newGoal];
     const homeScore = updatedGoals.filter(g => g.teamId === selectedMatch.homeId).length;
@@ -458,10 +459,21 @@ function App() {
                       <div key={goal.id} style={{display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.15)', padding: '8px 12px', borderRadius: 8, fontSize: '0.85rem'}}>
                         <span style={{fontWeight: 'bold', color: 'var(--accent-color)'}}>{goalTeam?.emoji}</span>
                         <select 
+                          value={goal.type || 'normal'} 
+                          onChange={e => updateGoalDetail(goal.id, 'type', e.target.value)}
+                          className="edit-input"
+                          style={{padding: '4px 6px', fontSize: '0.8rem', width: '56px'}}
+                        >
+                          <option value="normal">流れ</option>
+                          <option value="pk">PK</option>
+                          <option value="fk">FK</option>
+                        </select>
+
+                        <select 
                           value={goal.scorerId || ''} 
                           onChange={e => updateGoalDetail(goal.id, 'scorerId', e.target.value)}
                           className="edit-input"
-                          style={{padding: '4px 8px', fontSize: '0.8rem', flex: 1, width: '45%'}}
+                          style={{padding: '4px 6px', fontSize: '0.8rem', flex: 1}}
                         >
                           <option value="">得点者: 未設定</option>
                           {teamMembers.map(m => (
@@ -473,7 +485,7 @@ function App() {
                           value={goal.assistId || ''} 
                           onChange={e => updateGoalDetail(goal.id, 'assistId', e.target.value)}
                           className="edit-input"
-                          style={{padding: '4px 8px', fontSize: '0.8rem', flex: 1, width: '45%'}}
+                          style={{padding: '4px 6px', fontSize: '0.8rem', flex: 1}}
                         >
                           <option value="">アシスト: なし</option>
                           {teamMembers.filter(m => m.id !== goal.scorerId).map(m => (
@@ -481,7 +493,7 @@ function App() {
                           ))}
                         </select>
 
-                        <button onClick={() => removeGoal(goal.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4}}>
+                        <button onClick={() => removeGoal(goal.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 2}}>
                           <X size={16} />
                         </button>
                       </div>
@@ -610,7 +622,8 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings }) {
           {teamGoals.map((g, idx) => {
             const scorerStr = g.scorerId ? formatPlayer(g.scorerId) : '未入力';
             const assistStr = g.assistId ? ` [A:${formatPlayer(g.assistId)}]` : '';
-            return <div key={g.id}>{idx + 1}. {scorerStr}{assistStr}</div>;
+            const typeStr = g.type === 'pk' ? ' (PK)' : g.type === 'fk' ? ' (FK)' : '';
+            return <div key={g.id}>{idx + 1}. {scorerStr}{typeStr}{assistStr}</div>;
           })}
         </div>
       );
