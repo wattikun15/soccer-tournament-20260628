@@ -263,8 +263,14 @@ function App() {
       <header className="header no-print">
         <div>
           <h1>一般ミニサッカー大会@本五ふれあい公園</h1>
-          <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4}}>
-            <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
+          <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
+            <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
+              <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
+            </span>
+            <span style={{fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 12}}>
+              中野区 在住: <span style={{color: '#fff', fontWeight: 'bold'}}>{members.filter(m => m.checked && m.isResident).length}</span>名 / 
+              在勤: <span style={{color: '#fff', fontWeight: 'bold'}}>{members.filter(m => m.checked && m.isWorker).length}</span>名
+            </span>
           </div>
         </div>
         <div className="team-logo" style={{width: 36, height: 36, fontSize: '1.2rem'}}>🏆</div>
@@ -1338,6 +1344,8 @@ function TeamsView({ teams, members, setMembers }) {
   const [editingMember, setEditingMember] = useState(null);
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
+  const [editIsResident, setEditIsResident] = useState(false);
+  const [editIsWorker, setEditIsWorker] = useState(false);
   const [checkMode, setCheckMode] = useState(false);
 
   const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => Number(a.number) - Number(b.number));
@@ -1347,10 +1355,12 @@ function TeamsView({ teams, members, setMembers }) {
     setEditingMember(member.id);
     setEditName(member.name);
     setEditNumber(member.number);
+    setEditIsResident(member.isResident || false);
+    setEditIsWorker(member.isWorker || false);
   };
 
   const saveEdit = (id) => {
-    setMembers(members.map(m => m.id === id ? { ...m, name: editName, number: editNumber } : m));
+    setMembers(members.map(m => m.id === id ? { ...m, name: editName, number: editNumber, isResident: editIsResident, isWorker: editIsWorker } : m));
     setEditingMember(null);
   };
 
@@ -1362,10 +1372,12 @@ function TeamsView({ teams, members, setMembers }) {
 
   const addNewMember = () => {
     const newId = 'p' + Date.now();
-    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '' }]);
+    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '', isResident: false, isWorker: false }]);
     setEditingMember(newId);
     setEditName('');
     setEditNumber('');
+    setEditIsResident(false);
+    setEditIsWorker(false);
   };
 
   const toggleCheck = (id) => {
@@ -1485,26 +1497,38 @@ function TeamsView({ teams, members, setMembers }) {
 
               {/* 編集モード */}
               {!checkMode && editingMember === member.id ? (
-                <div style={{display: 'flex', gap: 8, flex: 1, alignItems: 'center'}}>
-                  <input 
-                    type="number" 
-                    value={editNumber} 
-                    onChange={e => setEditNumber(e.target.value)}
-                    placeholder="背番号"
-                    className="edit-input"
-                    style={{width: 60}}
-                  />
-                  <input 
-                    type="text" 
-                    value={editName} 
-                    onChange={e => setEditName(e.target.value)}
-                    placeholder="名前"
-                    className="edit-input"
-                    style={{flex: 1, width: '100%'}}
-                  />
-                  <button onClick={() => saveEdit(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--accent-color)', padding: 8, cursor: 'pointer'}}>
-                    <Save size={20} />
-                  </button>
+                <div style={{display: 'flex', flexWrap: 'wrap', gap: 8, flex: 1, alignItems: 'center'}}>
+                  <div style={{display: 'flex', gap: 8, width: '100%', alignItems: 'center'}}>
+                    <input 
+                      type="number" 
+                      value={editNumber} 
+                      onChange={e => setEditNumber(e.target.value)}
+                      placeholder="背番号"
+                      className="edit-input"
+                      style={{width: 60}}
+                    />
+                    <input 
+                      type="text" 
+                      value={editName} 
+                      onChange={e => setEditName(e.target.value)}
+                      placeholder="名前"
+                      className="edit-input"
+                      style={{flex: 1}}
+                    />
+                  </div>
+                  <div style={{display: 'flex', gap: 16, width: '100%', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
+                    <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
+                      <input type="checkbox" checked={editIsResident} onChange={e => setEditIsResident(e.target.checked)} />
+                      中野区在住
+                    </label>
+                    <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
+                      <input type="checkbox" checked={editIsWorker} onChange={e => setEditIsWorker(e.target.checked)} />
+                      中野区在勤
+                    </label>
+                    <button onClick={() => saveEdit(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--accent-color)', padding: 8, cursor: 'pointer', marginLeft: 'auto'}}>
+                      <Save size={20} />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div style={{display: 'flex', gap: 16, flex: 1, alignItems: 'center'}}>
@@ -1517,7 +1541,11 @@ function TeamsView({ teams, members, setMembers }) {
                     flex: 1,
                     fontWeight: checkMode && member.checked ? 'bold' : 'normal',
                     color: checkMode && member.checked ? '#fff' : 'inherit'
-                  }}>{member.name}</div>
+                  }}>
+                    {member.name}
+                    {member.isResident && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>在住</span>}
+                    {member.isWorker && <span style={{marginLeft: 4, fontSize: '0.7rem', background: '#ff9800', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>在勤</span>}
+                  </div>
                   {!checkMode && (
                     <>
                       {/* 編集モード: チェック済みバッジ */}
