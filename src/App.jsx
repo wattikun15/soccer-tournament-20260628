@@ -268,8 +268,7 @@ function App() {
               <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
             </span>
             <span style={{fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 12}}>
-              中野区 在住: <span style={{color: '#fff', fontWeight: 'bold'}}>{members.filter(m => m.checked && m.isResident).length}</span>名 / 
-              在勤: <span style={{color: '#fff', fontWeight: 'bold'}}>{members.filter(m => m.checked && m.isWorker).length}</span>名
+              中野区(在住・在勤): <span style={{color: '#fff', fontWeight: 'bold'}}>{members.filter(m => m.checked && (m.isNakano || m.isResident || m.isWorker)).length}</span>名
             </span>
           </div>
         </div>
@@ -1344,8 +1343,7 @@ function TeamsView({ teams, members, setMembers }) {
   const [editingMember, setEditingMember] = useState(null);
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
-  const [editIsResident, setEditIsResident] = useState(false);
-  const [editIsWorker, setEditIsWorker] = useState(false);
+  const [editIsNakano, setEditIsNakano] = useState(false);
   const [checkMode, setCheckMode] = useState(false);
 
   const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => Number(a.number) - Number(b.number));
@@ -1355,12 +1353,11 @@ function TeamsView({ teams, members, setMembers }) {
     setEditingMember(member.id);
     setEditName(member.name);
     setEditNumber(member.number);
-    setEditIsResident(member.isResident || false);
-    setEditIsWorker(member.isWorker || false);
+    setEditIsNakano(member.isNakano || member.isResident || member.isWorker || false);
   };
 
   const saveEdit = (id) => {
-    setMembers(members.map(m => m.id === id ? { ...m, name: editName, number: editNumber, isResident: editIsResident, isWorker: editIsWorker } : m));
+    setMembers(members.map(m => m.id === id ? { ...m, name: editName, number: editNumber, isNakano: editIsNakano, isResident: false, isWorker: false } : m));
     setEditingMember(null);
   };
 
@@ -1372,12 +1369,11 @@ function TeamsView({ teams, members, setMembers }) {
 
   const addNewMember = () => {
     const newId = 'p' + Date.now();
-    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '', isResident: false, isWorker: false }]);
+    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '', isNakano: false }]);
     setEditingMember(newId);
     setEditName('');
     setEditNumber('');
-    setEditIsResident(false);
-    setEditIsWorker(false);
+    setEditIsNakano(false);
   };
 
   const toggleCheck = (id) => {
@@ -1518,12 +1514,8 @@ function TeamsView({ teams, members, setMembers }) {
                   </div>
                   <div style={{display: 'flex', gap: 16, width: '100%', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
                     <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
-                      <input type="checkbox" checked={editIsResident} onChange={e => setEditIsResident(e.target.checked)} />
-                      中野区在住
-                    </label>
-                    <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
-                      <input type="checkbox" checked={editIsWorker} onChange={e => setEditIsWorker(e.target.checked)} />
-                      中野区在勤
+                      <input type="checkbox" checked={editIsNakano} onChange={e => setEditIsNakano(e.target.checked)} />
+                      中野区(在住・在勤)
                     </label>
                     <button onClick={() => saveEdit(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--accent-color)', padding: 8, cursor: 'pointer', marginLeft: 'auto'}}>
                       <Save size={20} />
@@ -1543,8 +1535,7 @@ function TeamsView({ teams, members, setMembers }) {
                     color: checkMode && member.checked ? '#fff' : 'inherit'
                   }}>
                     {member.name}
-                    {member.isResident && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>在住</span>}
-                    {member.isWorker && <span style={{marginLeft: 4, fontSize: '0.7rem', background: '#ff9800', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>在勤</span>}
+                    {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                   </div>
                   {!checkMode && (
                     <>
