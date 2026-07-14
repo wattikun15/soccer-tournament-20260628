@@ -261,7 +261,12 @@ function App() {
     <div className="container">
       {/* Header */}
       <header className="header no-print">
-        <h1>一般ミニサッカー大会@本五ふれあい公園</h1>
+        <div>
+          <h1>一般ミニサッカー大会@本五ふれあい公園</h1>
+          <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4}}>
+            <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
+          </div>
+        </div>
         <div className="team-logo" style={{width: 36, height: 36, fontSize: '1.2rem'}}>🏆</div>
       </header>
 
