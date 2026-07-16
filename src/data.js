@@ -1,8 +1,8 @@
 export const initialTeams = [
-  { id: 't1', name: 'CISCO', emoji: '🟦' },
-  { id: 't2', name: 'One Kameido', emoji: '🐢' },
   { id: 't3', name: 'GA', emoji: '🦁' },
-  { id: 't4', name: 'ミナミダイFC', emoji: '🔴' }
+  { id: 't4', name: 'ミナミダイFC', emoji: '🔴' },
+  { id: 't1', name: 'CISCO', emoji: '🟦' },
+  { id: 't2', name: 'One Kameido', emoji: '🐢' }
 ];
 
 export const initialMembers = [];
