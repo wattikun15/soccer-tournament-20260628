@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2 } from 'lucide-react';
+import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2, Lock, Unlock } from 'lucide-react';
 import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable } from './data';
 import './index.css';
 
 // Firebase Realtime Database URL
 const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260720';
+
+// 管理者PIN（4桁）
+const ADMIN_PIN = '1234';
 
 function App() {
   const [activeTab, setActiveTab] = useState('schedule');
@@ -14,6 +17,10 @@ function App() {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [printMode, setPrintMode] = useState('blank');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
 
   // Helper functions to save data to cloud
   const saveMatchesToCloud = async (updatedMatches) => {
@@ -132,10 +139,33 @@ function App() {
   const standings = calculateStandings(teams, matches);
 
   const handleMatchClick = (match) => {
+    if (!isAdmin) return;
     setSelectedMatch({ 
       ...match,
       goals: match.goals ? [...match.goals] : []
     });
+  };
+
+  const handlePinSubmit = () => {
+    if (pinInput === ADMIN_PIN) {
+      setIsAdmin(true);
+      setShowPinModal(false);
+      setPinInput('');
+      setPinError(false);
+    } else {
+      setPinError(true);
+      setPinInput('');
+    }
+  };
+
+  const handleAdminToggle = () => {
+    if (isAdmin) {
+      setIsAdmin(false);
+    } else {
+      setShowPinModal(true);
+      setPinInput('');
+      setPinError(false);
+    }
   };
 
   const closeModal = () => {
@@ -272,8 +302,58 @@ function App() {
             </span>
           </div>
         </div>
-        <div className="team-logo" style={{width: 36, height: 36, fontSize: '1.2rem'}}>🏆</div>
+        <button
+          onClick={handleAdminToggle}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 12, border: 'none',
+            background: isAdmin ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.08)',
+            color: isAdmin ? '#4caf50' : 'var(--text-secondary)',
+            cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold',
+            transition: 'all 0.2s', flexShrink: 0
+          }}
+        >
+          {isAdmin ? <><Unlock size={16} /> 管理者</> : <><Lock size={16} /> 🔒</>}
+        </button>
       </header>
+
+      {/* PIN入力モーダル */}
+      {showPinModal && (
+        <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999}}
+          onClick={() => setShowPinModal(false)}
+        >
+          <div style={{background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', borderRadius: 16, padding: 32, width: 320, border: '1px solid var(--glass-border)'}}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{textAlign: 'center', marginBottom: 20}}>🔐 管理者PIN入力</h3>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pinInput}
+              onChange={e => { setPinInput(e.target.value.replace(/[^0-9]/g, '')); setPinError(false); }}
+              onKeyDown={e => { if (e.key === 'Enter') handlePinSubmit(); }}
+              placeholder="4桁のPINを入力"
+              autoFocus
+              style={{
+                width: '100%', padding: '14px', borderRadius: 10,
+                border: `2px solid ${pinError ? 'var(--danger)' : 'rgba(255,255,255,0.2)'}`,
+                background: 'rgba(0,0,0,0.3)', color: '#fff',
+                fontSize: '1.5rem', textAlign: 'center', letterSpacing: '0.5em',
+                outline: 'none'
+              }}
+            />
+            {pinError && <p style={{color: 'var(--danger)', textAlign: 'center', marginTop: 8, fontSize: '0.85rem'}}>PINが正しくありません</p>}
+            <button
+              onClick={handlePinSubmit}
+              className="btn btn-primary"
+              style={{width: '100%', marginTop: 16, padding: 14}}
+            >
+              ロック解除
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="no-print">
@@ -313,7 +393,8 @@ function App() {
               matches={matches} 
               getTeam={getTeam} 
               getPlayer={getPlayer}
-              onMatchClick={handleMatchClick} 
+              onMatchClick={handleMatchClick}
+              isAdmin={isAdmin}
             />
           </>
         )}
@@ -332,6 +413,7 @@ function App() {
             teams={teams}
             members={members}
             setMembers={handleSetMembers}
+            isAdmin={isAdmin}
           />
         )}
       </main>
@@ -845,7 +927,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
 }
 
 
-function ScheduleView({ matches, getTeam, getPlayer, onMatchClick }) {
+function ScheduleView({ matches, getTeam, getPlayer, onMatchClick, isAdmin }) {
   const [stage, setStage] = useState('league'); // 'league', 'tournament', 'timetable'
 
   const displayedMatches = matches.filter(m => 
@@ -935,6 +1017,7 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick }) {
               refereePlayer={getPlayer(match.refereePlayerId)}
               getPlayer={getPlayer}
               onClick={() => onMatchClick(match)}
+              style={{cursor: isAdmin ? 'pointer' : 'default', opacity: 1}}
             />
           ))}
         </div>
@@ -1338,7 +1421,7 @@ function StandingsView({ standings, matches, members, getTeam }) {
   );
 }
 
-function TeamsView({ teams, members, setMembers }) {
+function TeamsView({ teams, members, setMembers, isAdmin }) {
   const [selectedTeam, setSelectedTeam] = useState(teams[0]?.id);
   const [editingMember, setEditingMember] = useState(null);
   const [editName, setEditName] = useState('');
@@ -1408,29 +1491,31 @@ function TeamsView({ teams, members, setMembers }) {
             {checkMode ? '✅ メンバーチェック' : '登録メンバー'}
           </h3>
           <div style={{display: 'flex', gap: 8}}>
-            {!checkMode && (
+            {isAdmin && !checkMode && (
               <button className="btn btn-primary" style={{padding: '8px 16px', width: 'auto', marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4}} onClick={addNewMember}>
                 <Plus size={16} /> 追加
               </button>
             )}
-            <button
-              onClick={() => { setCheckMode(!checkMode); setEditingMember(null); }}
-              style={{
-                padding: '8px 14px',
-                width: 'auto',
-                marginBottom: 0,
-                borderRadius: 8,
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '0.85rem',
-                background: checkMode ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
-                color: checkMode ? '#fff' : 'var(--text-secondary)',
-                transition: 'all 0.2s'
-              }}
-            >
-              {checkMode ? '✅ 完了' : '✅ チェックモード'}
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => { setCheckMode(!checkMode); setEditingMember(null); }}
+                style={{
+                  padding: '8px 14px',
+                  width: 'auto',
+                  marginBottom: 0,
+                  borderRadius: 8,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  background: checkMode ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
+                  color: checkMode ? '#fff' : 'var(--text-secondary)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {checkMode ? '✅ 完了' : '✅ チェックモード'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1539,7 +1624,7 @@ function TeamsView({ teams, members, setMembers }) {
                   </div>
                   {!checkMode && (
                     <>
-                      {/* 編集モード: チェック済みバッジ */}
+                      {/* チェック済みバッジ */}
                       {member.checked && (
                         <div style={{
                           display: 'flex', alignItems: 'center', gap: 3,
@@ -1555,12 +1640,16 @@ function TeamsView({ teams, members, setMembers }) {
                           <Check size={11} /> 確認済
                         </div>
                       )}
-                      <button onClick={() => startEdit(member)} style={{background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: 8, cursor: 'pointer'}}>
-                        <Edit2 size={18} />
-                      </button>
-                      <button onClick={() => deleteMember(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', padding: 8, cursor: 'pointer'}}>
-                        <Trash2 size={18} />
-                      </button>
+                      {isAdmin && (
+                        <>
+                          <button onClick={() => startEdit(member)} style={{background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: 8, cursor: 'pointer'}}>
+                            <Edit2 size={18} />
+                          </button>
+                          <button onClick={() => deleteMember(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', padding: 8, cursor: 'pointer'}}>
+                            <Trash2 size={18} />
+                          </button>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -1570,7 +1659,7 @@ function TeamsView({ teams, members, setMembers }) {
         </div>
 
         {/* チェックモード: リセットボタン */}
-        {checkMode && teamMembers.length > 0 && (
+        {isAdmin && checkMode && teamMembers.length > 0 && (
           <button
             onClick={resetChecks}
             style={{
