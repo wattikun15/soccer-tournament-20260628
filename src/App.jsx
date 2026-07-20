@@ -952,6 +952,47 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
         
         {renderFinalRanking()}
       </div>
+
+      {/* Page 4: Rules */}
+      <div className="print-page" style={{pageBreakBefore: 'always', padding: '10mm'}}>
+        <div className="print-title" style={{marginBottom: '8mm'}}>
+          <h1>中野区シニアミニサッカーのルール</h1>
+          <p>※2026年7月20日更新</p>
+        </div>
+        <div style={{fontSize: '11pt', lineHeight: '1.8'}}>
+          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■基本情報</h2>
+          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
+            <li>・形式：8人制(8対8)</li>
+            <li>・交代：自由交代制</li>
+            <li>・ボール：5号球</li>
+            <li>・ルール：通常のサッカーに準拠(オフサイドあり)</li>
+          </ul>
+
+          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■服装規定</h2>
+          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
+            <li>・（規定なし）</li>
+          </ul>
+
+          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■試合開始前</h2>
+          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
+            <li>・審判、相手をリスペクトするため、全員と握手してから試合を開始する</li>
+            <li>・各チーム1つ試合球を出し、4つで大会を運営する</li>
+          </ul>
+
+          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■試合終了後</h2>
+          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
+            <li>・代表者は本部にて試合結果をチェック(得点、アシスト、警告、退場)</li>
+          </ul>
+
+          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■審判体制（資格不問）</h2>
+          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
+            <li>・主審 1名</li>
+            <li>・副審 2名</li>
+            <li>・四審 1名以上</li>
+            <li>・ＢＰ 2～3名</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
