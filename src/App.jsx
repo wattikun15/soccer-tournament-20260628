@@ -1558,6 +1558,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
   const [editingMember, setEditingMember] = useState(null);
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
+  const [editAge, setEditAge] = useState('');
   const [editIsNakano, setEditIsNakano] = useState(false);
   const [checkMode, setCheckMode] = useState(false);
 
@@ -1568,11 +1569,12 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
     setEditingMember(member.id);
     setEditName(member.name);
     setEditNumber(member.number);
+    setEditAge(member.age || '');
     setEditIsNakano(member.isNakano || member.isResident || member.isWorker || false);
   };
 
   const saveEdit = (id) => {
-    setMembers(members.map(m => m.id === id ? { ...m, name: editName, number: editNumber, isNakano: editIsNakano, isResident: false, isWorker: false } : m));
+    setMembers(members.map(m => m.id === id ? { ...m, name: editName, number: editNumber, age: editAge, isNakano: editIsNakano, isResident: false, isWorker: false } : m));
     setEditingMember(null);
   };
 
@@ -1584,10 +1586,11 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
 
   const addNewMember = () => {
     const newId = 'p' + Date.now();
-    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '', isNakano: false }]);
+    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '', age: '', isNakano: false }]);
     setEditingMember(newId);
     setEditName('');
     setEditNumber('');
+    setEditAge('');
     setEditIsNakano(false);
   };
 
@@ -1728,6 +1731,14 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       className="edit-input"
                       style={{flex: 1}}
                     />
+                    <input 
+                      type="number" 
+                      value={editAge} 
+                      onChange={e => setEditAge(e.target.value)}
+                      placeholder="年齢"
+                      className="edit-input"
+                      style={{width: 60}}
+                    />
                   </div>
                   <div style={{display: 'flex', gap: 16, width: '100%', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
                     <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
@@ -1752,6 +1763,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                     color: checkMode && member.checked ? '#fff' : 'inherit'
                   }}>
                     {member.name}
+                    {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
                     {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                   </div>
                   {!checkMode && (
