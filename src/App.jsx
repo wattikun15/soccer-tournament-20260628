@@ -757,13 +757,13 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
         <table className="print-detail-table">
           <tbody>
             <tr>
-              <th rowSpan={printMode === 'blank' ? 8 : (hasGoals ? match.goals.length + 1 : 2)} style={{verticalAlign: 'middle', textAlign: 'center'}}>得点<br/><span style={{fontSize:'6pt',fontWeight:'normal'}}>（ｱｼｽﾄ）</span></th>
+              <th rowSpan={printMode === 'blank' ? 9 : (hasGoals ? match.goals.length + 1 : 2)} style={{verticalAlign: 'middle', textAlign: 'center'}}>得点<br/><span style={{fontSize:'6pt',fontWeight:'normal'}}>（ｱｼｽﾄ）</span></th>
               <td style={{padding: '0.5mm 1mm', fontSize: '7pt', fontWeight: 'bold', background: '#f0f0f0', textAlign: 'center', width: '18mm', height: '5mm'}}>チーム</td>
               <td style={{padding: '0.5mm 1mm', fontSize: '7pt', fontWeight: 'bold', background: '#f0f0f0', textAlign: 'center'}}>得点者</td>
               <td style={{padding: '0.5mm 1mm', fontSize: '7pt', fontWeight: 'bold', background: '#f0f0f0', textAlign: 'center'}}>アシスト</td>
             </tr>
             {printMode === 'blank' ? (
-              [1,2,3,4,5,6,7].map(i => (
+              [1,2,3,4,5,6,7,8].map(i => (
                 <tr key={i}>
                   <td style={{height: '7mm', width: '18mm'}}></td>
                   <td style={{height: '7mm'}}></td>
