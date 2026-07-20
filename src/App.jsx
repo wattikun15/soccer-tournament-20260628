@@ -757,13 +757,13 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
         <table className="print-detail-table">
           <tbody>
             <tr>
-              <th rowSpan={printMode === 'blank' ? 6 : (hasGoals ? match.goals.length + 1 : 2)} style={{verticalAlign: 'middle', textAlign: 'center'}}>得点<br/><span style={{fontSize:'6pt',fontWeight:'normal'}}>（ｱｼｽﾄ）</span></th>
+              <th rowSpan={printMode === 'blank' ? 8 : (hasGoals ? match.goals.length + 1 : 2)} style={{verticalAlign: 'middle', textAlign: 'center'}}>得点<br/><span style={{fontSize:'6pt',fontWeight:'normal'}}>（ｱｼｽﾄ）</span></th>
               <td style={{padding: '0.5mm 1mm', fontSize: '7pt', fontWeight: 'bold', background: '#f0f0f0', textAlign: 'center', width: '18mm', height: '5mm'}}>チーム</td>
               <td style={{padding: '0.5mm 1mm', fontSize: '7pt', fontWeight: 'bold', background: '#f0f0f0', textAlign: 'center'}}>得点者</td>
               <td style={{padding: '0.5mm 1mm', fontSize: '7pt', fontWeight: 'bold', background: '#f0f0f0', textAlign: 'center'}}>アシスト</td>
             </tr>
             {printMode === 'blank' ? (
-              [1,2,3,4,5].map(i => (
+              [1,2,3,4,5,6,7].map(i => (
                 <tr key={i}>
                   <td style={{height: '7mm', width: '18mm'}}></td>
                   <td style={{height: '7mm'}}></td>
@@ -854,23 +854,27 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
 
   return (
     <div className="print-only print-scorecard">
-      {/* Page 1: League */}
+      {/* Page 1: League matches 1-4 */}
       <div className="print-page">
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年7月12日（土）　会場：本五ふれあい公園</p>
+          <p>開催日：2026年7月20日（日）　会場：本五ふれあい公園</p>
         </div>
         <div className="print-grid">
-          {leagueMatches.map(renderMatchCard)}
+          {leagueMatches.slice(0, 4).map(renderMatchCard)}
         </div>
       </div>
 
-      {/* Page 2: League Stats */}
+      {/* Page 2: League matches 5-6 + Stats */}
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
-          <h1>予選リーグ 星取表・集計表 {printMode === 'result' ? '(結果)' : ''}</h1>
-          <p>開催日：2026年7月12日（土）　会場：本五ふれあい公園</p>
+          <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}（続き）/ 星取表・集計表 {printMode === 'result' ? '(結果)' : ''}</h1>
+          <p>開催日：2026年7月20日（日）　会場：本五ふれあい公園</p>
         </div>
+        <div className="print-grid">
+          {leagueMatches.slice(4).map(renderMatchCard)}
+        </div>
+
         {/* Win/Loss matrix */}
         <div style={{marginTop: '4mm'}}>
           <table className="print-stats-table">
@@ -940,7 +944,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>決勝トーナメント {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年7月12日（土）　会場：本五ふれあい公園</p>
+          <p>開催日：2026年7月20日（日）　会場：本五ふれあい公園</p>
         </div>
         <div className="print-grid">
           {knockoutMatches.map(renderMatchCard)}
