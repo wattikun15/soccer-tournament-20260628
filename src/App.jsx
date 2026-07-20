@@ -292,7 +292,7 @@ function App() {
       {/* Header */}
       <header className="header no-print">
         <div>
-          <h1>一般ミニサッカー大会@本五ふれあい公園</h1>
+          <h1>一般ミニサッカー大会@平和の森公園</h1>
           <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
             <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
               <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
@@ -858,7 +858,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page">
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年7月20日（日）　会場：本五ふれあい公園</p>
+          <p>開催日：2026年7月20日（日）　会場：平和の森公園</p>
         </div>
         <div className="print-grid">
           {leagueMatches.slice(0, 4).map(renderMatchCard)}
@@ -869,7 +869,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}（続き）/ 星取表・集計表 {printMode === 'result' ? '(結果)' : ''}</h1>
-          <p>開催日：2026年7月20日（日）　会場：本五ふれあい公園</p>
+          <p>開催日：2026年7月20日（日）　会場：平和の森公園</p>
         </div>
         <div className="print-grid">
           {leagueMatches.slice(4).map(renderMatchCard)}
@@ -944,7 +944,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>決勝トーナメント {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年7月20日（日）　会場：本五ふれあい公園</p>
+          <p>開催日：2026年7月20日（日）　会場：平和の森公園</p>
         </div>
         <div className="print-grid">
           {knockoutMatches.map(renderMatchCard)}
@@ -956,7 +956,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       {/* Page 4: Rules */}
       <div className="print-page" style={{pageBreakBefore: 'always', padding: '10mm'}}>
         <div className="print-title" style={{marginBottom: '8mm'}}>
-          <h1>中野区シニアミニサッカーのルール</h1>
+          <h1>一般ミニサッカー大会のルール</h1>
           <p>※2026年7月20日更新</p>
         </div>
         <div style={{fontSize: '11pt', lineHeight: '1.8'}}>
