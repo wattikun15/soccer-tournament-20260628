@@ -361,6 +361,20 @@ function App() {
           <>
             <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: 12, gap: 12}}>
               <button
+                onClick={() => handlePrint('rules')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)',
+                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
+                onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
+              >
+                📜 ルール(PDF)
+              </button>
+              <button
                 onClick={() => handlePrint('blank')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
@@ -854,8 +868,10 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
 
   return (
     <div className="print-only print-scorecard">
-      {/* Page 1: League matches 1-4 */}
-      <div className="print-page">
+      {printMode !== 'rules' && (
+        <>
+          {/* Page 1: League matches 1-4 */}
+          <div className="print-page">
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
           <p>開催日：2026年7月20日（日）　会場：平和の森公園</p>
@@ -952,47 +968,92 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
         
         {renderFinalRanking()}
       </div>
+        </>
+      )}
 
-      {/* Page 4: Rules */}
-      <div className="print-page" style={{pageBreakBefore: 'always', padding: '10mm'}}>
-        <div className="print-title" style={{marginBottom: '8mm'}}>
-          <h1>一般ミニサッカー大会のルール</h1>
-          <p>※2026年7月20日更新</p>
+      {printMode === 'rules' && (
+        {/* Page 4: Rules */}
+        <div className="print-page" style={{padding: '10mm'}}>
+          <div className="print-title" style={{marginBottom: '8mm'}}>
+            <h1>一般ミニサッカー大会のルール</h1>
+            <p>※2026年7月20日更新</p>
+          </div>
+          <div style={{fontSize: '10pt', lineHeight: '1.6'}}>
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■基本情報</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・形式：8人制(8対8)</li>
+              <li>・交代：自由交代制</li>
+              <li>・ボール：5号球</li>
+              <li>・ルール：通常のサッカーに準拠(オフサイドあり)</li>
+            </ul>
+
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■ルール概要(通常サッカーとの差異)</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・フリーキック時は、壁の人数に関わらず攻撃側は壁から1m離れる(キック時に離れていなければファールとして笛を吹く)</li>
+              <li>・フリーキック時の距離は7m</li>
+              <li>・キックオフシュートは禁止</li>
+              <li>・禁止事項(イエローまたは、レッドカードを提示する)</li>
+              <li style={{paddingLeft: '12px'}}>①スライディングでの接触(キーパーを含む)</li>
+              <li style={{paddingLeft: '12px'}}>②後ろからの接触</li>
+              <li style={{paddingLeft: '12px'}}>③相手が激しく倒れるくらいのショルダーチャージは後ろからでなくてもファールとする</li>
+              <li style={{paddingLeft: '12px'}}>④キーパーへの激しい接触</li>
+              <li style={{paddingLeft: '12px'}}>⑤暴言、遅延行為</li>
+            </ul>
+
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■試合開始前</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・審判、相手をリスペクトするため、全員と握手してから試合を開始する</li>
+              <li>・各チーム1つ試合球を出し、4つで大会を運営する</li>
+            </ul>
+
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■選手交代(流れ)</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・入場選手は四審に交代を宣告</li>
+              <li>・退場選手への呼びかけは、審判でなくチームで行う</li>
+              <li>・退場選手は近くのタッチラインより退場する（位置は不問）</li>
+              <li>・入場選手は交代エリアより入場する</li>
+            </ul>
+
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■選手交代(注意点)</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・交代は試合を止めずに交代する</li>
+              <li>・交代者INは交代者OUTがコートから出てからコートへ入ること</li>
+              <li>・ゲーム中のキーパーの交代はなし(怪我の場合は除く)</li>
+            </ul>
+
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■審判体制（資格不問）</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・主審 1名</li>
+              <li>・副審 2名</li>
+              <li>・四審 1名以上</li>
+              <li>・ＢＰ 2～3名</li>
+            </ul>
+
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■四審の役割</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・得点、アシスト、警告、退場、試合結果　※交代者のメモは不要</li>
+              <li>・交代のOUTとINの管理</li>
+              <li>・途中参加者の服装チェック</li>
+              <li>・本部側でのボールだし</li>
+            </ul>
+
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■試合終了後</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・代表者は本部にて試合結果をチェック(得点、アシスト、警告、退場)</li>
+            </ul>
+
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■予選で同順位の場合</h2>
+            <div style={{paddingLeft: '8px', marginBottom: '12px'}}>
+              <div>①勝ち点(勝ち3点、引分1点、負け0点)</div>
+              <div>②得失点</div>
+              <div>③直接対決の結果</div>
+              <div>④ファール数(イエロー：-5、レッド：-10)</div>
+              <div>⑤ジャンケン</div>
+              <div style={{color: '#666', fontSize: '9pt', marginTop: '4px'}}>※①から順番に判断する</div>
+            </div>
+          </div>
         </div>
-        <div style={{fontSize: '11pt', lineHeight: '1.8'}}>
-          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■基本情報</h2>
-          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
-            <li>・形式：8人制(8対8)</li>
-            <li>・交代：自由交代制</li>
-            <li>・ボール：5号球</li>
-            <li>・ルール：通常のサッカーに準拠(オフサイドあり)</li>
-          </ul>
-
-          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■服装規定</h2>
-          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
-            <li>・（規定なし）</li>
-          </ul>
-
-          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■試合開始前</h2>
-          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
-            <li>・審判、相手をリスペクトするため、全員と握手してから試合を開始する</li>
-            <li>・各チーム1つ試合球を出し、4つで大会を運営する</li>
-          </ul>
-
-          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■試合終了後</h2>
-          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
-            <li>・代表者は本部にて試合結果をチェック(得点、アシスト、警告、退場)</li>
-          </ul>
-
-          <h2 style={{fontSize: '13pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■審判体制（資格不問）</h2>
-          <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '16px'}}>
-            <li>・主審 1名</li>
-            <li>・副審 2名</li>
-            <li>・四審 1名以上</li>
-            <li>・ＢＰ 2～3名</li>
-          </ul>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
