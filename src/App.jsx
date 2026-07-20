@@ -1559,6 +1559,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
   const [editAge, setEditAge] = useState('');
+  const [editReferee, setEditReferee] = useState('');
   const [editIsNakano, setEditIsNakano] = useState(false);
   const [checkMode, setCheckMode] = useState(false);
 
@@ -1570,11 +1571,12 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
     setEditName(member.name);
     setEditNumber(member.number);
     setEditAge(member.age || '');
+    setEditReferee(member.referee || '');
     setEditIsNakano(member.isNakano || member.isResident || member.isWorker || false);
   };
 
   const saveEdit = (id) => {
-    setMembers(members.map(m => m.id === id ? { ...m, name: editName, number: editNumber, age: editAge, isNakano: editIsNakano, isResident: false, isWorker: false } : m));
+    setMembers(members.map(m => m.id === id ? { ...m, name: editName, number: editNumber, age: editAge, referee: editReferee, isNakano: editIsNakano, isResident: false, isWorker: false } : m));
     setEditingMember(null);
   };
 
@@ -1586,11 +1588,12 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
 
   const addNewMember = () => {
     const newId = 'p' + Date.now();
-    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '', age: '', isNakano: false }]);
+    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '', age: '', referee: '', isNakano: false }]);
     setEditingMember(newId);
     setEditName('');
     setEditNumber('');
     setEditAge('');
+    setEditReferee('');
     setEditIsNakano(false);
   };
 
@@ -1739,6 +1742,16 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       className="edit-input"
                       style={{width: 60}}
                     />
+                    <select 
+                      value={editReferee} 
+                      onChange={e => setEditReferee(e.target.value)}
+                      className="edit-input"
+                      style={{width: 90}}
+                    >
+                      <option value="">(審判資格)</option>
+                      <option value="4級">4級</option>
+                      <option value="3級">3級</option>
+                    </select>
                   </div>
                   <div style={{display: 'flex', gap: 16, width: '100%', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
                     <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
@@ -1764,6 +1777,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                   }}>
                     {member.name}
                     {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
+                    {member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>審判: {member.referee}</span>}
                     {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                   </div>
                   {!checkMode && (
