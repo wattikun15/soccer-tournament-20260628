@@ -738,7 +738,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
     };
 
     const isFinished = printMode === 'result' && match.status === 'finished';
-
+    const hasGoals = match.goals && match.goals.length > 0;
     return (
       <div key={match.id} className="print-match">
         <div className="print-match-header">
@@ -757,18 +757,44 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
         <table className="print-detail-table">
           <tbody>
             <tr>
-              <th>得点<br/><span style={{fontSize:'6pt',fontWeight:'normal'}}>(ｱｼｽﾄ)</span></th>
-              <td colSpan="2" style={{height: printMode === 'blank' ? '28mm' : '16mm'}}>{renderAllGoals()}</td>
+              <th rowSpan={printMode === 'blank' ? 6 : (hasGoals ? match.goals.length + 1 : 2)} style={{verticalAlign: 'middle', textAlign: 'center'}}>得点<br/><span style={{fontSize:'6pt',fontWeight:'normal'}}>（ｱｼｽﾄ）</span></th>
+              <td style={{padding: '0.5mm 1mm', fontSize: '7pt', fontWeight: 'bold', background: '#f0f0f0', textAlign: 'center', width: '18mm', height: '5mm'}}>チーム</td>
+              <td style={{padding: '0.5mm 1mm', fontSize: '7pt', fontWeight: 'bold', background: '#f0f0f0', textAlign: 'center'}}>得点者</td>
+              <td style={{padding: '0.5mm 1mm', fontSize: '7pt', fontWeight: 'bold', background: '#f0f0f0', textAlign: 'center'}}>アシスト</td>
             </tr>
+            {printMode === 'blank' ? (
+              [1,2,3,4,5].map(i => (
+                <tr key={i}>
+                  <td style={{height: '7mm', width: '18mm'}}></td>
+                  <td style={{height: '7mm'}}></td>
+                  <td style={{height: '7mm'}}></td>
+                </tr>
+              ))
+            ) : (
+              hasGoals ? match.goals.map((g, idx) => {
+                const team = getTeam(g.teamId);
+                const scorerStr = g.scorerId ? formatPlayer(g.scorerId) : '';
+                const assistStr = g.assistId ? formatPlayer(g.assistId) : '';
+                return (
+                  <tr key={g.id}>
+                    <td style={{height: '6mm', fontSize: '8pt', textAlign: 'center'}}>{team?.name || ''}</td>
+                    <td style={{height: '6mm', fontSize: '8pt'}}>{scorerStr}</td>
+                    <td style={{height: '6mm', fontSize: '8pt'}}>{assistStr}</td>
+                  </tr>
+                );
+              }) : (
+                <tr><td style={{height: '7mm'}}></td><td style={{height: '7mm'}}></td><td style={{height: '7mm'}}></td></tr>
+              )
+            )}
             <tr>
               <th>主審</th>
-              <td colSpan="2" className="print-ref-cell">
+              <td colSpan="3" className="print-ref-cell">
                 {match.refereePlayerId ? formatPlayer(match.refereePlayerId) : (referee ? `${referee.name}：` : '')}
               </td>
             </tr>
             <tr>
               <th>備考</th>
-              <td colSpan="2"></td>
+              <td colSpan="3"></td>
             </tr>
           </tbody>
         </table>
