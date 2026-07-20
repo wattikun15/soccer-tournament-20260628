@@ -972,8 +972,8 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       )}
 
       {printMode === 'rules' && (
-        {/* Page 4: Rules */}
         <div className="print-page" style={{padding: '10mm'}}>
+          {/* Page 4: Rules */}
           <div className="print-title" style={{marginBottom: '8mm'}}>
             <h1>一般ミニサッカー大会のルール</h1>
             <p>※2026年7月20日更新</p>
