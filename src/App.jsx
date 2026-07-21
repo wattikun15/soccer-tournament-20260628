@@ -1465,13 +1465,77 @@ function StandingsView({ standings, matches, members, getTeam }) {
       {subTab === 'team' && (
         <>
           {(first || second || third || fourth) && (
-            <div className="glass-card" style={{padding: '16px', marginBottom: '16px', textAlign: 'center'}}>
-              <h3 style={{marginTop: 0, marginBottom: 12, fontSize: '1rem', color: 'var(--accent-color)'}}>最終結果</h3>
-              <div style={{display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 16, fontWeight: 'bold'}}>
-                {first && <div style={{fontSize: '1.1rem'}}>🥇 優勝: {first}</div>}
-                {second && <div style={{fontSize: '1.05rem'}}>🥈 準優勝: {second}</div>}
-                {third && <div>🥉 3位: {third}</div>}
-                {fourth && <div>4位: {fourth}</div>}
+            <div className="glass-card" style={{
+              padding: '24px 16px', 
+              marginBottom: '24px', 
+              textAlign: 'center', 
+              background: 'linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(0,0,0,0.4) 100%)',
+              border: '1px solid rgba(255,215,0,0.3)',
+              boxShadow: '0 8px 32px rgba(255,215,0,0.1)'
+            }}>
+              <h2 style={{marginTop: 0, marginBottom: 20, fontSize: '1.5rem', color: '#ffd700', textShadow: '0 2px 4px rgba(0,0,0,0.5)', letterSpacing: '2px'}}>🏆 最終順位 🏆</h2>
+              <div style={{display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center'}}>
+                {first && (
+                  <div style={{
+                    fontSize: '1.8rem', 
+                    fontWeight: '900', 
+                    color: '#ffd700',
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: '12px 24px',
+                    borderRadius: '12px',
+                    width: '100%',
+                    maxWidth: '400px',
+                    border: '2px solid #ffd700',
+                    boxShadow: '0 4px 16px rgba(255,215,0,0.2)'
+                  }}>
+                    🥇 優勝: {first}
+                  </div>
+                )}
+                {second && (
+                  <div style={{
+                    fontSize: '1.4rem', 
+                    fontWeight: 'bold', 
+                    color: '#e0e0e0',
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: '8px 24px',
+                    borderRadius: '12px',
+                    width: '100%',
+                    maxWidth: '350px',
+                    border: '1px solid #c0c0c0'
+                  }}>
+                    🥈 準優勝: {second}
+                  </div>
+                )}
+                <div style={{display: 'flex', gap: 12, justifyContent: 'center', width: '100%', maxWidth: '400px'}}>
+                  {third && (
+                    <div style={{
+                      flex: 1,
+                      fontSize: '1.1rem', 
+                      fontWeight: 'bold', 
+                      color: '#cd7f32',
+                      background: 'rgba(0,0,0,0.3)',
+                      padding: '8px 16px',
+                      borderRadius: '12px',
+                      border: '1px solid #cd7f32'
+                    }}>
+                      🥉 3位: {third}
+                    </div>
+                  )}
+                  {fourth && (
+                    <div style={{
+                      flex: 1,
+                      fontSize: '1.1rem', 
+                      fontWeight: 'bold', 
+                      color: 'var(--text-secondary)',
+                      background: 'rgba(0,0,0,0.3)',
+                      padding: '8px 16px',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      4位: {fourth}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
