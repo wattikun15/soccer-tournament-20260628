@@ -1346,6 +1346,37 @@ function StandingsView({ standings, matches, members, getTeam }) {
   const goalRankings = assignRanks([...personalList].filter(p => p.goals > 0).sort(rankSort('goals')), 'goals');
   const assistRankings = assignRanks([...personalList].filter(p => p.assists > 0).sort(rankSort('assists')), 'assists');
 
+  // Calculate final tournament rankings
+  const finalMatch = matches.find(m => m.stage === 'final');
+  const thirdMatch = matches.find(m => m.stage === 'third_place');
+  let first = '', second = '', third = '', fourth = '';
+  
+  if (finalMatch && finalMatch.status === 'finished') {
+    if (finalMatch.homeScore > finalMatch.awayScore) {
+      first = getTeam(finalMatch.homeId)?.name || '';
+      second = getTeam(finalMatch.awayId)?.name || '';
+    } else if (finalMatch.homeScore < finalMatch.awayScore) {
+      first = getTeam(finalMatch.awayId)?.name || '';
+      second = getTeam(finalMatch.homeId)?.name || '';
+    } else {
+      first = getTeam(finalMatch.homeId)?.name || '';
+      second = getTeam(finalMatch.awayId)?.name || '';
+    }
+  }
+  
+  if (thirdMatch && thirdMatch.status === 'finished') {
+    if (thirdMatch.homeScore > thirdMatch.awayScore) {
+      third = getTeam(thirdMatch.homeId)?.name || '';
+      fourth = getTeam(thirdMatch.awayId)?.name || '';
+    } else if (thirdMatch.homeScore < thirdMatch.awayScore) {
+      third = getTeam(thirdMatch.awayId)?.name || '';
+      fourth = getTeam(thirdMatch.homeId)?.name || '';
+    } else {
+      third = getTeam(thirdMatch.homeId)?.name || '';
+      fourth = getTeam(thirdMatch.awayId)?.name || '';
+    }
+  }
+
   // CSVダウンロード関数
   const downloadCSV = () => {
     const rows = [];
@@ -1432,7 +1463,20 @@ function StandingsView({ standings, matches, members, getTeam }) {
       </div>
 
       {subTab === 'team' && (
-        <div className="table-container">
+        <>
+          {(first || second || third || fourth) && (
+            <div className="glass-card" style={{padding: '16px', marginBottom: '16px', textAlign: 'center'}}>
+              <h3 style={{marginTop: 0, marginBottom: 12, fontSize: '1rem', color: 'var(--accent-color)'}}>最終結果</h3>
+              <div style={{display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 16, fontWeight: 'bold'}}>
+                {first && <div style={{fontSize: '1.1rem'}}>🥇 優勝: {first}</div>}
+                {second && <div style={{fontSize: '1.05rem'}}>🥈 準優勝: {second}</div>}
+                {third && <div>🥉 3位: {third}</div>}
+                {fourth && <div>4位: {fourth}</div>}
+              </div>
+            </div>
+          )}
+          <div style={{marginBottom: 8, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>※予選リーグの成績表</div>
+          <div className="table-container">
           <table className="standings-table">
             <thead>
               <tr>
@@ -1463,9 +1507,12 @@ function StandingsView({ standings, matches, members, getTeam }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {subTab === 'goals' && (
+        <>
+        <div style={{marginBottom: 8, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>※決勝・三位決定戦を含む全試合の合計得点</div>
         <div className="table-container">
           <table className="standings-table">
             <thead>
@@ -1494,9 +1541,12 @@ function StandingsView({ standings, matches, members, getTeam }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {subTab === 'assists' && (
+        <>
+        <div style={{marginBottom: 8, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>※決勝・三位決定戦を含む全試合の合計アシスト</div>
         <div className="table-container">
           <table className="standings-table">
             <thead>
@@ -1525,6 +1575,7 @@ function StandingsView({ standings, matches, members, getTeam }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* CSVダウンロードボタン */}
