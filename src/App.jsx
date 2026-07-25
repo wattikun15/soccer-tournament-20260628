@@ -1677,8 +1677,8 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
   const [deleteMode, setDeleteMode] = useState(false);
 
   const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => {
-    if (a.id === editingMember && a.name === '新規選手') return -1;
-    if (b.id === editingMember && b.name === '新規選手') return 1;
+    if (a.id === editingMember) return -1;
+    if (b.id === editingMember) return 1;
     return Number(a.number) - Number(b.number);
   });
   const checkedCount = teamMembers.filter(m => m.checked).length;
