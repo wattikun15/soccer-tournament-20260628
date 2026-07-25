@@ -292,7 +292,7 @@ function App() {
       {/* Header */}
       <header className="header no-print">
         <div>
-          <h1>一般ミニサッカー大会@平和の森公園</h1>
+          <h1>7/25(日)中野区ミニサッカー シニア大会@平和の森公園</h1>
           <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
             <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
               <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
@@ -971,7 +971,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
         <div className="print-page" style={{padding: '10mm'}}>
           {/* Page 4: Rules */}
           <div className="print-title" style={{marginBottom: '8mm'}}>
-            <h1>一般ミニサッカー大会のルール</h1>
+            <h1>中野区ミニサッカー シニア大会のルール</h1>
             <p>※2026年7月26日更新</p>
           </div>
           <div style={{fontSize: '10pt', lineHeight: '1.6'}}>
