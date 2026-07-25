@@ -1692,6 +1692,14 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
     setEditingMember(null);
   };
 
+  const cancelEdit = (id) => {
+    const original = members.find(m => m.id === id);
+    if (original && original.name === '新規選手') {
+      setMembers(members.filter(m => m.id !== id));
+    }
+    setEditingMember(null);
+  };
+
   const deleteMember = (id) => {
     if(window.confirm('本当に削除しますか？')) {
       setMembers(members.filter(m => m.id !== id));
@@ -1889,7 +1897,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       value={editReferee} 
                       onChange={e => setEditReferee(e.target.value)}
                       className="edit-input"
-                      style={{width: 90, flexShrink: 0}}
+                      style={{flex: '1 1 120px', minWidth: 100}}
                     >
                       <option value="">(審判資格)</option>
                       <option value="4級">4級</option>
@@ -1901,9 +1909,14 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       <input type="checkbox" checked={editIsNakano} onChange={e => setEditIsNakano(e.target.checked)} />
                       中野区(在住・在勤)
                     </label>
-                    <button onClick={() => saveEdit(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--accent-color)', padding: 8, cursor: 'pointer', marginLeft: 'auto'}}>
-                      <Save size={20} />
-                    </button>
+                    <div style={{marginLeft: 'auto', display: 'flex', gap: 4}}>
+                      <button onClick={() => cancelEdit(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: 8, cursor: 'pointer'}}>
+                        <X size={20} />
+                      </button>
+                      <button onClick={() => saveEdit(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--accent-color)', padding: 8, cursor: 'pointer'}}>
+                        <Save size={20} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
