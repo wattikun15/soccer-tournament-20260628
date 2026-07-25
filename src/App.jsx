@@ -1846,7 +1846,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                     display: 'flex', alignItems: 'center', gap: 4
                   }}
                 >
-                  <X size={16} /> キャンセル
+                  ❌ キャンセル
                 </button>
                 <button
                   onClick={() => saveEdit(editingMember)}
