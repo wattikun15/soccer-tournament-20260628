@@ -1673,6 +1673,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
   const [editReferee, setEditReferee] = useState('');
   const [editIsNakano, setEditIsNakano] = useState(false);
   const [checkMode, setCheckMode] = useState(false);
+  const [checkBackup, setCheckBackup] = useState(null);
 
   const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => Number(a.number) - Number(b.number));
   const checkedCount = teamMembers.filter(m => m.checked).length;
@@ -1743,24 +1744,58 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
               </button>
             )}
             {isAdmin && (
-              <button
-                onClick={() => { setCheckMode(!checkMode); setEditingMember(null); }}
-                style={{
-                  padding: '8px 14px',
-                  width: 'auto',
-                  marginBottom: 0,
-                  borderRadius: 8,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '0.85rem',
-                  background: checkMode ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
-                  color: checkMode ? '#fff' : 'var(--text-secondary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {checkMode ? '✅ 完了' : '✅ メンバーチェック'}
-              </button>
+              <>
+                {checkMode && (
+                  <button
+                    onClick={() => {
+                      if (checkBackup) {
+                        setMembers(checkBackup);
+                      }
+                      setCheckMode(false);
+                      setCheckBackup(null);
+                    }}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: 8,
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.85rem',
+                      background: 'transparent',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    ❌ キャンセル
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (!checkMode) {
+                      setCheckBackup(members);
+                      setCheckMode(true);
+                      setEditingMember(null);
+                    } else {
+                      setCheckMode(false);
+                      setCheckBackup(null);
+                    }
+                  }}
+                  style={{
+                    padding: '8px 14px',
+                    width: 'auto',
+                    marginBottom: 0,
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '0.85rem',
+                    background: checkMode ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
+                    color: checkMode ? '#fff' : 'var(--text-secondary)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {checkMode ? '✅ 完了' : '✅ メンバーチェック'}
+                </button>
+              </>
             )}
           </div>
         </div>
