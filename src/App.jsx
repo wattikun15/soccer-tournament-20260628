@@ -1873,7 +1873,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       type="number" 
                       value={editNumber} 
                       onChange={e => setEditNumber(e.target.value)}
-                      placeholder="背番号"
+                      placeholder="No"
                       className="edit-input"
                       style={{width: 60, flexShrink: 0}}
                     />
