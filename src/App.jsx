@@ -329,6 +329,9 @@ function App() {
             <input
               type="password"
               inputMode="numeric"
+              autoComplete="new-password"
+              name="pin-code-dummy"
+              data-lpignore="true"
               maxLength={4}
               value={pinInput}
               onChange={e => { setPinInput(e.target.value.replace(/[^0-9]/g, '')); setPinError(false); }}
