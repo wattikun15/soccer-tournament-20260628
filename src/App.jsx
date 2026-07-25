@@ -375,7 +375,7 @@ function App() {
                 onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
                 onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
               >
-                <BookOpen size={16} /> ルール
+                ルール
               </button>
               <button
                 onClick={() => handlePrint('blank')}
@@ -389,7 +389,7 @@ function App() {
                 onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
                 onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
               >
-                🖨️ 記録用紙(PDF)
+                記録用紙
               </button>
               <button
                 onClick={() => handlePrint('result')}
@@ -403,7 +403,7 @@ function App() {
                 onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
                 onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
               >
-                📊 試合結果(PDF)
+                試合結果
               </button>
             </div>
             <ScheduleView 
