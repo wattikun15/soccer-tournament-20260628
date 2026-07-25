@@ -468,8 +468,18 @@ function App() {
       </nav>
 
       {/* Score & Referee Edit Modal */}
-      <div className={`modal-overlay ${selectedMatch ? 'open' : ''}`} onClick={closeModal}>
-        <div className="modal-content" onClick={e => e.stopPropagation()}>
+      <div className={`modal-overlay ${selectedMatch ? 'open' : ''}`}>
+        <div className="modal-content" onClick={e => e.stopPropagation()} style={{position: 'relative'}}>
+          <button 
+            onClick={closeModal}
+            style={{
+              position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,0.1)', border: 'none',
+              color: 'var(--text-primary)', cursor: 'pointer', padding: 6, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10
+            }}
+          >
+            <X size={20} />
+          </button>
           <div className="modal-drag-handle"></div>
           
           {selectedMatch && (
