@@ -671,15 +671,8 @@ function App() {
               </div>
 
               {/* Action Buttons */}
-              <button className="btn btn-primary" onClick={() => saveMatch('live')}>
-                試合中として保存
-              </button>
-              <button className="btn btn-secondary" onClick={() => saveMatch('finished')} style={{color: 'var(--accent-color)', borderColor: 'var(--accent-color)'}}>
-                <Check size={18} style={{marginRight: 8, verticalAlign: 'middle'}}/>
-                試合終了
-              </button>
-              <button className="btn btn-secondary" onClick={() => saveMatch('scheduled')}>
-                予定に戻す
+              <button className="btn btn-primary" onClick={() => saveMatch('finished')}>
+                保存
               </button>
             </>
           )}
@@ -1159,13 +1152,6 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick, isAdmin }) {
 }
 
 function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, getPlayer, onClick }) {
-  const getStatusText = (status) => {
-    switch(status) {
-      case 'live': return 'LIVE';
-      case 'finished': return '試合終了';
-      default: return match.date;
-    }
-  };
 
   const getGoalsText = (teamId) => {
     if (!match.goals) return '';
@@ -1186,7 +1172,7 @@ function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, getP
     <div className="glass-card match-item" onClick={onClick}>
       <div className="match-header">
         <span>{match.label || 'リーグ戦'}</span>
-        <span className={`match-status ${match.status}`}>{getStatusText(match.status)}</span>
+        <span className="match-time" style={{fontSize: '0.8rem', color: 'var(--text-secondary)'}}>{match.date}</span>
       </div>
       
       <div className="teams-container">
@@ -1383,15 +1369,13 @@ function StandingsView({ standings, matches, members, getTeam }) {
 
     // ── 試合結果 ──
     rows.push(['【試合結果】']);
-    rows.push(['試合名', '時間', 'ホーム', 'スコア', 'アウェイ', '状態']);
+    rows.push(['試合名', '時間', 'ホーム', 'スコア', 'アウェイ']);
     matches.forEach(m => {
       const home = getTeam(m.homeId)?.name || '未定';
       const away = getTeam(m.awayId)?.name || '未定';
-      const score = (m.status === 'finished' || m.status === 'live')
+      const score = m.status === 'finished'
         ? `${m.homeScore}-${m.awayScore}` : '-';
-      const status = m.status === 'finished' ? '試合終了'
-        : m.status === 'live' ? '試合中' : '予定';
-      rows.push([m.label, m.date, home, score, away, status]);
+      rows.push([m.label, m.date, home, score, away]);
     });
     rows.push([]);
 
