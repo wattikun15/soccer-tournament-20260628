@@ -540,8 +540,18 @@ function App() {
                   </button>
                   {selectedMatch.actualStartTime && (
                     <>
-                      <span style={{fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 'bold'}}>
-                        打刻: {selectedMatch.actualStartTime} {
+                      <div style={{display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 'bold'}}>
+                        打刻: 
+                        <input
+                          type="time"
+                          value={selectedMatch.actualStartTime || ''}
+                          onChange={e => setSelectedMatch({ ...selectedMatch, actualStartTime: e.target.value })}
+                          style={{
+                            background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff',
+                            padding: '2px 6px', borderRadius: 4, fontSize: '0.85rem', outline: 'none', width: '80px'
+                          }}
+                        />
+                        {
                           selectedMatch.date ? (
                             (() => {
                               const sParts = selectedMatch.date.split(':').map(Number);
@@ -554,7 +564,7 @@ function App() {
                             })()
                           ) : ''
                         }
-                      </span>
+                      </div>
                       <button 
                         onClick={() => setSelectedMatch({...selectedMatch, actualStartTime: null})}
                         style={{background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline'}}
