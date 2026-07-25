@@ -360,7 +360,20 @@ function App() {
         {activeTab === 'schedule' && (
           <>
             <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: 12, gap: 12}}>
-              
+              <button
+                onClick={() => setActiveTab('rules')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)',
+                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
+                onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
+              >
+                <BookOpen size={16} /> ルール
+              </button>
               <button
                 onClick={() => handlePrint('blank')}
                 style={{
@@ -419,7 +432,7 @@ function App() {
         )}
         
         {activeTab === 'rules' && (
-          <RulesView handlePrint={handlePrint} />
+          <RulesView handlePrint={handlePrint} setActiveTab={setActiveTab} />
         )}
       </main>
 
@@ -448,13 +461,6 @@ function App() {
         >
           <Users size={24} />
           <span>チーム</span>
-        </div>
-        <div 
-          className={`nav-item ${activeTab === 'rules' ? 'active' : ''}`}
-          onClick={() => setActiveTab('rules')}
-        >
-          <BookOpen size={24} />
-          <span>ルール</span>
         </div>
       </nav>
 
@@ -1941,11 +1947,24 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
 }
 
 
-function RulesView({ handlePrint }) {
+function RulesView({ handlePrint, setActiveTab }) {
   return (
     <div className="glass-card" style={{padding: 24, paddingBottom: 64}}>
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24}}>
-        <h2 style={{margin: 0}}>大会ルール</h2>
+        <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+          {setActiveTab && (
+            <button
+              onClick={() => setActiveTab('schedule')}
+              style={{
+                background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-primary)',
+                padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem'
+              }}
+            >
+              ← 戻る
+            </button>
+          )}
+          <h2 style={{margin: 0}}>大会ルール</h2>
+        </div>
         <button
           onClick={() => handlePrint('rules')}
           style={{
