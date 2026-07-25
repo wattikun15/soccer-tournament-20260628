@@ -393,12 +393,12 @@ function App() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '8px 16px', borderRadius: 8, border: 'none',
-                  background: 'var(--accent-color)', color: '#fff',
+                  background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)',
                   cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500,
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={e => { e.target.style.opacity = '0.8'; }}
-                onMouseLeave={e => { e.target.style.opacity = '1'; }}
+                onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
+                onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
               >
                 📊 試合結果(PDF)
               </button>
