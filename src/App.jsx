@@ -1759,7 +1759,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                   transition: 'all 0.2s'
                 }}
               >
-                {checkMode ? '✅ 完了' : '✅ チェックモード'}
+                {checkMode ? '✅ 完了' : '✅ メンバーチェック'}
               </button>
             )}
           </div>
@@ -1885,8 +1885,8 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                   }}>
                     {member.name}
                     {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
-                    {member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>審判: {member.referee}</span>}
-                    {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
+                    {!checkMode && member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>審判: {member.referee}</span>}
+                    {!checkMode && (member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                   </div>
                   {!checkMode && (
                     <>
