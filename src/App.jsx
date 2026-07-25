@@ -1676,7 +1676,11 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
   const [checkBackup, setCheckBackup] = useState(null);
   const [deleteMode, setDeleteMode] = useState(false);
 
-  const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => Number(a.number) - Number(b.number));
+  const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => {
+    if (a.id === editingMember && a.name === '新規選手') return -1;
+    if (b.id === editingMember && b.name === '新規選手') return 1;
+    return Number(a.number) - Number(b.number);
+  });
   const checkedCount = teamMembers.filter(m => m.checked).length;
 
   const startEdit = (member) => {
@@ -1747,12 +1751,12 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
         {/* ヘッダー */}
         <div style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 16}}>
           <div style={{display: 'flex', gap: 8}}>
-            {isAdmin && !checkMode && !deleteMode && (
+            {!editingMember && isAdmin && !checkMode && !deleteMode && (
               <button className="btn btn-primary" style={{padding: '8px 16px', width: 'auto', marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4}} onClick={addNewMember}>
                 <Plus size={16} /> 追加
               </button>
             )}
-            {isAdmin && !checkMode && (
+            {!editingMember && isAdmin && !checkMode && (
               <button
                 onClick={() => { setDeleteMode(!deleteMode); setEditingMember(null); }}
                 style={{
@@ -1772,7 +1776,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                 {deleteMode ? '❌ キャンセル' : <><Trash2 size={16} /> 削除</>}
               </button>
             )}
-            {isAdmin && !deleteMode && (
+            {!editingMember && isAdmin && !deleteMode && (
               <>
                 {checkMode && (
                   <button
@@ -1823,6 +1827,38 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                   }}
                 >
                   {checkMode ? '✅ 完了' : '✅ メンバーチェック'}
+                </button>
+              </>
+            )}
+            {editingMember && (
+              <>
+                <button
+                  onClick={() => cancelEdit(editingMember)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '0.85rem',
+                    background: 'transparent',
+                    color: 'var(--text-secondary)',
+                    display: 'flex', alignItems: 'center', gap: 4
+                  }}
+                >
+                  <X size={16} /> キャンセル
+                </button>
+                <button
+                  onClick={() => saveEdit(editingMember)}
+                  className="btn btn-primary"
+                  style={{
+                    padding: '8px 14px',
+                    width: 'auto',
+                    marginBottom: 0,
+                    display: 'flex', alignItems: 'center', gap: 4
+                  }}
+                >
+                  <Save size={16} /> 登録
                 </button>
               </>
             )}
@@ -1930,14 +1966,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       <input type="checkbox" checked={editIsNakano} onChange={e => setEditIsNakano(e.target.checked)} />
                       中野区(在住・在勤)
                     </label>
-                    <div style={{marginLeft: 'auto', display: 'flex', gap: 4}}>
-                      <button onClick={() => cancelEdit(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: 8, cursor: 'pointer'}}>
-                        <X size={20} />
-                      </button>
-                      <button onClick={() => saveEdit(member.id)} style={{background: 'transparent', border: 'none', color: 'var(--accent-color)', padding: 8, cursor: 'pointer'}}>
-                        <Save size={20} />
-                      </button>
-                    </div>
+                    
                   </div>
                 </div>
               ) : (
@@ -1977,7 +2006,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       )}
                       {isAdmin && (
                         <>
-                          {!deleteMode && (
+                          {!deleteMode && !editingMember && (
                             <button onClick={() => startEdit(member)} style={{background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: 8, cursor: 'pointer'}}>
                               <Edit2 size={18} />
                             </button>
