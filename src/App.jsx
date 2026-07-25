@@ -731,9 +731,35 @@ function App() {
               </div>
 
               {/* Action Buttons */}
-              <button className="btn btn-primary" onClick={() => saveMatch('finished')}>
-                保存
-              </button>
+              {(() => {
+                const isRevertable = 
+                  selectedMatch.status === 'finished' && 
+                  (!selectedMatch.goals || selectedMatch.goals.length === 0) &&
+                  !selectedMatch.actualStartTime &&
+                  !selectedMatch.refereePlayerId;
+                
+                if (isRevertable) {
+                  return (
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={() => {
+                        // Reset scores before saving as scheduled
+                        selectedMatch.homeScore = 0;
+                        selectedMatch.awayScore = 0;
+                        saveMatch('scheduled');
+                      }} 
+                      style={{color: '#ff9800', borderColor: '#ff9800'}}
+                    >
+                      開始前に戻す
+                    </button>
+                  );
+                }
+                return (
+                  <button className="btn btn-primary" onClick={() => saveMatch('finished')}>
+                    保存
+                  </button>
+                );
+              })()}
             </>
           )}
         </div>
