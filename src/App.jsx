@@ -526,19 +526,20 @@ function App() {
                 </div>
                 
                 <div style={{display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12, marginTop: 12}}>
-                  <button 
-                    onClick={() => {
-                      const now = new Date();
-                      const hh = String(now.getHours()).padStart(2, '0');
-                      const mm = String(now.getMinutes()).padStart(2, '0');
-                      setSelectedMatch({...selectedMatch, actualStartTime: `${hh}:${mm}`});
-                    }}
-                    className="btn btn-secondary" 
-                    style={{padding: '6px 12px', fontSize: '0.8rem'}}
-                  >
-                    ⏱ 開始を打刻
-                  </button>
-                  {selectedMatch.actualStartTime && (
+                  {!selectedMatch.actualStartTime ? (
+                    <button 
+                      onClick={() => {
+                        const now = new Date();
+                        const hh = String(now.getHours()).padStart(2, '0');
+                        const mm = String(now.getMinutes()).padStart(2, '0');
+                        setSelectedMatch({...selectedMatch, actualStartTime: `${hh}:${mm}`});
+                      }}
+                      className="btn btn-secondary" 
+                      style={{padding: '6px 12px', fontSize: '0.8rem'}}
+                    >
+                      ⏱ 開始を打刻
+                    </button>
+                  ) : (
                     <div style={{display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem'}}>
                       <input
                         type="time"
