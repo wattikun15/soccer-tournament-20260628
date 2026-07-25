@@ -1735,10 +1735,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
 
       <div className="glass-card" style={{marginTop: 16}}>
         {/* ヘッダー */}
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}}>
-          <h3 style={{margin: 0}}>
-            {checkMode ? '✅ メンバーチェック' : '登録メンバー'}
-          </h3>
+        <div style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 16}}>
           <div style={{display: 'flex', gap: 8}}>
             {isAdmin && !checkMode && (
               <button className="btn btn-primary" style={{padding: '8px 16px', width: 'auto', marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4}} onClick={addNewMember}>
@@ -1771,7 +1768,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
         {/* 進捗バー（常時表示） */}
         <div style={{marginBottom: 16}}>
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
-            <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>参加確認</span>
+            <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>登録メンバー</span>
             <span style={{fontSize: '0.9rem', fontWeight: 'bold', color: checkedCount === teamMembers.length && teamMembers.length > 0 ? '#4caf50' : 'var(--accent-color)'}}>
               {checkedCount} / {teamMembers.length} 名
             </span>
