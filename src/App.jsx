@@ -1762,13 +1762,14 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                   cursor: 'pointer',
                   fontWeight: 'bold',
                   fontSize: '0.85rem',
-                  background: deleteMode ? 'var(--danger)' : 'rgba(255,255,255,0.1)',
-                  color: deleteMode ? '#fff' : 'var(--text-secondary)',
+                  background: deleteMode ? 'transparent' : 'rgba(255,255,255,0.1)',
+                  border: deleteMode ? '1px solid rgba(255,255,255,0.2)' : 'none',
+                  color: deleteMode ? 'var(--text-secondary)' : 'var(--text-secondary)',
                   transition: 'all 0.2s',
                   display: 'flex', alignItems: 'center', gap: 4
                 }}
               >
-                {deleteMode ? '✅ 完了' : <><Trash2 size={16} /> 削除</>}
+                {deleteMode ? '❌ キャンセル' : <><Trash2 size={16} /> 削除</>}
               </button>
             )}
             {isAdmin && !deleteMode && (
@@ -1953,7 +1954,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                   }}>
                     {member.name}
                     {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
-                    {!checkMode && member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>審判: {member.referee}</span>}
+                    {!checkMode && member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>{member.referee}</span>}
                     {!checkMode && (member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                   </div>
                   {!checkMode && (
