@@ -4,7 +4,7 @@ import { initialTeams, initialMatches, initialMembers, calculateStandings, initi
 import './index.css';
 
 // Firebase Realtime Database URL
-const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260720';
+const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260726';
 
 // 管理者PIN（4桁）
 const ADMIN_PIN = '1234';
@@ -874,7 +874,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
           <div className="print-page">
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年7月20日（日）　会場：平和の森公園</p>
+          <p>開催日：2026年7月26日（日）　会場：平和の森公園</p>
         </div>
         <div className="print-grid">
           {leagueMatches.slice(0, 4).map(renderMatchCard)}
@@ -885,7 +885,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}（続き）/ 星取表・集計表 {printMode === 'result' ? '(結果)' : ''}</h1>
-          <p>開催日：2026年7月20日（日）　会場：平和の森公園</p>
+          <p>開催日：2026年7月26日（日）　会場：平和の森公園</p>
         </div>
         <div className="print-grid">
           {leagueMatches.slice(4).map(renderMatchCard)}
@@ -960,7 +960,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>決勝トーナメント {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年7月20日（日）　会場：平和の森公園</p>
+          <p>開催日：2026年7月26日（日）　会場：平和の森公園</p>
         </div>
         <div className="print-grid">
           {knockoutMatches.map(renderMatchCard)}
@@ -976,7 +976,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
           {/* Page 4: Rules */}
           <div className="print-title" style={{marginBottom: '8mm'}}>
             <h1>一般ミニサッカー大会のルール</h1>
-            <p>※2026年7月20日更新</p>
+            <p>※2026年7月26日更新</p>
           </div>
           <div style={{fontSize: '10pt', lineHeight: '1.6'}}>
             <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■基本情報</h2>
