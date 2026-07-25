@@ -1860,14 +1860,14 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
               {/* 編集モード */}
               {!checkMode && editingMember === member.id ? (
                 <div style={{display: 'flex', flexWrap: 'wrap', gap: 8, flex: 1, alignItems: 'center'}}>
-                  <div style={{display: 'flex', gap: 8, width: '100%', alignItems: 'center'}}>
+                  <div style={{display: 'flex', flexWrap: 'wrap', gap: 8, width: '100%', alignItems: 'center'}}>
                     <input 
                       type="number" 
                       value={editNumber} 
                       onChange={e => setEditNumber(e.target.value)}
                       placeholder="背番号"
                       className="edit-input"
-                      style={{width: 60}}
+                      style={{width: 60, flexShrink: 0}}
                     />
                     <input 
                       type="text" 
@@ -1875,7 +1875,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       onChange={e => setEditName(e.target.value)}
                       placeholder="名前"
                       className="edit-input"
-                      style={{flex: 1}}
+                      style={{flex: '1 1 120px', minWidth: 100}}
                     />
                     <input 
                       type="number" 
@@ -1883,13 +1883,13 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       onChange={e => setEditAge(e.target.value)}
                       placeholder="年齢"
                       className="edit-input"
-                      style={{width: 60}}
+                      style={{width: 60, flexShrink: 0}}
                     />
                     <select 
                       value={editReferee} 
                       onChange={e => setEditReferee(e.target.value)}
                       className="edit-input"
-                      style={{width: 90}}
+                      style={{width: 90, flexShrink: 0}}
                     >
                       <option value="">(審判資格)</option>
                       <option value="4級">4級</option>
