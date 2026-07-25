@@ -576,7 +576,9 @@ function App() {
                 <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
                   {selectedMatch.goals.map((goal, idx) => {
                     const goalTeam = getTeam(goal.teamId);
-                    const teamMembers = members.filter(m => m.teamId === goal.teamId);
+                    const teamMembers = members
+                      .filter(m => m.teamId === goal.teamId)
+                      .sort((a, b) => Number(a.number) - Number(b.number));
                     return (
                       <div key={goal.id} style={{display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.15)', padding: '8px 12px', borderRadius: 8, fontSize: '0.85rem'}}>
                         <span style={{fontWeight: 'bold', color: 'var(--accent-color)'}}>{goalTeam?.emoji}</span>
@@ -659,6 +661,7 @@ function App() {
                         <option value="">未選択</option>
                         {members
                           .filter(m => m.teamId === selectedMatch.refereeTeamId)
+                          .sort((a, b) => Number(a.number) - Number(b.number))
                           .map(m => (
                             <option key={m.id} value={m.id}>
                               {m.number ? `[${m.number}] ` : ''}{m.name}
