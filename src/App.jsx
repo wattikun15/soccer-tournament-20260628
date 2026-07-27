@@ -657,6 +657,7 @@ function App() {
                           style={{padding: '4px 6px', fontSize: '0.8rem', flex: 1}}
                         >
                           <option value="">得点者: 未設定</option>
+                          <option value="own_goal">オウンゴール</option>
                           {teamMembers.map(m => (
                             <option key={m.id} value={m.id}>{m.number ? `[${m.number}] ` : ''}{m.name}</option>
                           ))}
@@ -810,6 +811,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
     
     const formatPlayer = (pId) => {
       if (!pId) return '';
+      if (pId === 'own_goal') return 'オウンゴール';
       const p = getPlayer(pId);
       return p ? `${p.name}(#${p.number})` : '';
     };
@@ -1256,9 +1258,9 @@ function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, getP
     return match.goals
       .filter(g => g.teamId === teamId && g.scorerId)
       .map(g => {
-        const scorer = getPlayer(g.scorerId);
+        const scorerName = g.scorerId === 'own_goal' ? 'オウンゴール' : getPlayer(g.scorerId)?.name;
         const assist = g.assistId ? getPlayer(g.assistId) : null;
-        return `${scorer?.name}${assist ? `(A:${assist.name})` : ''}`;
+        return `${scorerName}${assist ? `(A:${assist.name})` : ''}`;
       })
       .join(', ');
   };
@@ -1356,7 +1358,7 @@ function StandingsView({ standings, matches, members, getTeam }) {
     matches.forEach(m => {
       if (m.goals) {
         m.goals.forEach(g => {
-          if (g.scorerId) {
+          if (g.scorerId && g.scorerId !== 'own_goal') {
             if (!stats[g.scorerId]) stats[g.scorerId] = { goals: 0, assists: 0 };
             stats[g.scorerId].goals += 1;
           }
