@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2, Lock, Unlock, BookOpen } from 'lucide-react';
 import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable } from './data';
+import { ensureAuth, auth } from './firebase';
 import './index.css';
 
 // Firebase Realtime Database URL
@@ -8,6 +9,15 @@ const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-so
 
 // 管理者PIN（4桁）
 const ADMIN_PIN = '1234';
+
+// Fetch wrapper that signs in anonymously and attaches the auth token
+// required by the Realtime Database rules.
+async function authedFetch(url, options) {
+  await ensureAuth();
+  const token = await auth.currentUser.getIdToken();
+  const authedUrl = `${url}${url.includes('?') ? '&' : '?'}auth=${token}`;
+  return fetch(authedUrl, options);
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState('schedule');
@@ -25,7 +35,7 @@ function App() {
   // Helper functions to save data to cloud
   const saveMatchesToCloud = async (updatedMatches) => {
     try {
-      const res = await fetch(`${FIREBASE_BASE_URL}/matches.json`, {
+      const res = await authedFetch(`${FIREBASE_BASE_URL}/matches.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedMatches)
@@ -38,7 +48,7 @@ function App() {
 
   const saveMembersToCloud = async (updatedMembers) => {
     try {
-      const res = await fetch(`${FIREBASE_BASE_URL}/members.json`, {
+      const res = await authedFetch(`${FIREBASE_BASE_URL}/members.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedMembers)
@@ -61,8 +71,8 @@ function App() {
 
         // Fetch from Firebase
         const [resMatches, resMembers] = await Promise.all([
-          fetch(`${FIREBASE_BASE_URL}/matches.json`),
-          fetch(`${FIREBASE_BASE_URL}/members.json`)
+          authedFetch(`${FIREBASE_BASE_URL}/matches.json`),
+          authedFetch(`${FIREBASE_BASE_URL}/members.json`)
         ]);
 
         let finalMatches = initialMatches;
@@ -110,8 +120,8 @@ function App() {
 
       try {
         const [resMatches, resMembers] = await Promise.all([
-          fetch(`${FIREBASE_BASE_URL}/matches.json`),
-          fetch(`${FIREBASE_BASE_URL}/members.json`)
+          authedFetch(`${FIREBASE_BASE_URL}/matches.json`),
+          authedFetch(`${FIREBASE_BASE_URL}/members.json`)
         ]);
 
         if (resMatches.ok) {
