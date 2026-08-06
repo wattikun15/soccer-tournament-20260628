@@ -1067,7 +1067,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
           {/* Page 4: Rules */}
           <div className="print-title" style={{marginBottom: '8mm'}}>
             <h1>中野区ミニサッカー シニア大会のルール</h1>
-            <p>※2026年7月26日更新</p>
+            <p>※2026年8月11日更新</p>
           </div>
           <div style={{fontSize: '10pt', lineHeight: '1.6'}}>
             <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■基本情報</h2>
