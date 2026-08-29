@@ -1,22 +1,10 @@
-export const initialTeams = [
-  { id: 't1', name: 'GA', emoji: '🦁' },
-  { id: 't2', name: 'ケンFC', emoji: '🦅' },
-  { id: 't3', name: 'FCネロ', emoji: '🐺' },
-  { id: 't4', name: '囲町FC', emoji: '🐯' }
-];
+// 8/30(日)中野区ミニサッカー シニア大会@平和の森公園
+// チーム構成・試合スケジュールは決定次第、PDF/スプレッドシートを元に反映します。
+export const initialTeams = [];
 
 export const initialMembers = [];
 
-export const initialMatches = [
-  { id: 'm1', stage: 'league', date: '09:15', homeId: 't3', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第1試合', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
-  { id: 'm2', stage: 'league', date: '09:42', homeId: 't1', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第2試合', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
-  { id: 'm3', stage: 'league', date: '10:09', homeId: 't3', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第3試合', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
-  { id: 'm4', stage: 'league', date: '10:36', homeId: 't1', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第4試合', refereeTeamId: 't4', refereePlayerId: null, goals: [] },
-  { id: 'm5', stage: 'league', date: '11:03', homeId: 't3', awayId: 't1', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第5試合', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
-  { id: 'm6', stage: 'league', date: '11:30', homeId: 't2', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第6試合', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
-  { id: 'm7', stage: 'third_place', date: '11:59', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '三位決定戦', refereeTeamId: null, refereePlayerId: null, goals: [] },
-  { id: 'm8', stage: 'final', date: '12:26', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝戦', refereeTeamId: null, refereePlayerId: null, goals: [] }
-];
+export const initialMatches = [];
 
 // Helper to calculate standings
 export const calculateStandings = (teams, matches) => {
@@ -70,27 +58,5 @@ export const calculateStandings = (teams, matches) => {
   });
 };
 
-export const initialTimetable = [
-  { time: '08:45',          label: '集合（代表の方）',        detail: 'メンバー表の提出、背番号、ユニフォームの確認' },
-  { time: '09:00 - 09:05',  label: '開場・準備・アップ',      duration: '5m' },
-  { time: '09:05 - 09:10',  label: '開会式',                  duration: '5m' },
-  { time: '09:10 - 09:15',  label: '予選 第1試合【準備】',    duration: '5m', detail: 'メンバーチェック・挨拶含む' },
-  { time: '09:15 - 09:37',  label: '予選 第1試合',            duration: '22m', detail: 'FCネロ vs ケンFC　審判：GA (前半10分-HT2分-後半10分)' },
-  { time: '09:37 - 09:42',  label: '予選 第2試合【準備】',    duration: '5m', detail: 'メンバーチェック・挨拶含む' },
-  { time: '09:42 - 10:04',  label: '予選 第2試合',            duration: '22m', detail: 'GA vs 囲町FC（連戦）　審判：ケンFC' },
-  { time: '10:04 - 10:09',  label: '予選 第3試合【準備】',    duration: '5m', detail: '挨拶含む' },
-  { time: '10:09 - 10:31',  label: '予選 第3試合',            duration: '22m', detail: 'FCネロ vs 囲町FC（連戦）　審判：GA' },
-  { time: '10:31 - 10:36',  label: '予選 第4試合【準備】',    duration: '5m', detail: '挨拶含む' },
-  { time: '10:36 - 10:58',  label: '予選 第4試合',            duration: '22m', detail: 'GA（連戦） vs ケンFC　審判：囲町FC' },
-  { time: '10:58 - 11:03',  label: '予選 第5試合【準備】',    duration: '5m', detail: '挨拶含む' },
-  { time: '11:03 - 11:25',  label: '予選 第5試合',            duration: '22m', detail: 'FCネロ vs GA（連戦）　審判：ケンFC' },
-  { time: '11:25 - 11:30',  label: '予選 第6試合【準備】',    duration: '5m', detail: '挨拶含む' },
-  { time: '11:30 - 11:52',  label: '予選 第6試合',            duration: '22m', detail: 'ケンFC vs 囲町FC　審判：FCネロ' },
-  { time: '11:52 - 11:54',  label: '写真撮影',                duration: '2m', detail: '区・協会への報告、HP用' },
-  { time: '11:54 - 11:59',  label: '三位決定戦【準備】',      duration: '5m' },
-  { time: '11:59 - 12:21',  label: '三位決定戦',              duration: '22m', detail: '予選3位 vs 予選4位　審判：予選2位' },
-  { time: '12:21 - 12:26',  label: '決勝戦【準備】',          duration: '5m' },
-  { time: '12:26 - 12:48',  label: '決勝戦',                  duration: '22m', detail: '予選1位 vs 予選2位　審判：予選4位' },
-  { time: '12:48 - 12:50',  label: '予備時間',                duration: '2m' },
-  { time: '12:50 - 13:00',  label: '片づけ・撤収',            duration: '10m' },
-];
+// 8/30大会のタイムスケジュールも決定次第反映します。
+export const initialTimetable = [];
