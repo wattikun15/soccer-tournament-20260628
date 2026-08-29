@@ -393,31 +393,61 @@ function App() {
             >
               <X size={20} />
             </button>
-            <h3 style={{textAlign: 'center', marginBottom: 20}}>
+            <h3 style={{textAlign: 'center', marginBottom: 4}}>
               {getTeam(rosterTeamId)?.emoji} {getTeam(rosterTeamId)?.name} メンバー表
             </h3>
-            <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
-              {members.filter(m => m.teamId === rosterTeamId).length === 0 && (
-                <p style={{color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0'}}>メンバーが登録されていません</p>
-              )}
-              {members
-                .filter(m => m.teamId === rosterTeamId)
-                .sort((a, b) => Number(a.number) - Number(b.number))
-                .map(member => (
-                  <div
-                    key={member.id}
-                    style={{display: 'flex', alignItems: 'center', gap: 16, background: 'rgba(0,0,0,0.2)', padding: '10px 14px', borderRadius: 8}}
-                  >
-                    <div style={{width: 32, color: 'var(--text-secondary)', fontWeight: 'bold'}}>{member.number}</div>
-                    <div style={{flex: 1}}>
-                      {member.name}
-                      {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>{member.age}歳</span>}
-                      {member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>{member.referee}</span>}
-                      {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
-                    </div>
+            {(() => {
+              const rosterMembers = members.filter(m => m.teamId === rosterTeamId);
+              const rosterCheckedCount = rosterMembers.filter(m => m.checked).length;
+              const toggleRosterCheck = (id) => {
+                handleSetMembers(members.map(m => m.id === id ? { ...m, checked: !m.checked } : m));
+              };
+              return (
+                <>
+                  <p style={{textAlign: 'center', marginBottom: 20, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
+                    タップして出欠チェック
+                    <span style={{fontWeight: 'bold', color: rosterCheckedCount === rosterMembers.length && rosterMembers.length > 0 ? '#4caf50' : 'var(--accent-color)'}}>
+                      {rosterCheckedCount} / {rosterMembers.length} 名
+                    </span>
+                  </p>
+                  <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                    {rosterMembers.length === 0 && (
+                      <p style={{color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0'}}>メンバーが登録されていません</p>
+                    )}
+                    {rosterMembers
+                      .sort((a, b) => Number(a.number) - Number(b.number))
+                      .map(member => (
+                        <div
+                          key={member.id}
+                          onClick={() => toggleRosterCheck(member.id)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 16,
+                            background: member.checked ? 'rgba(76, 175, 80, 0.2)' : 'rgba(0,0,0,0.2)',
+                            border: member.checked ? '1px solid rgba(76, 175, 80, 0.5)' : '1px solid transparent',
+                            padding: '10px 14px', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{
+                            width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                            border: `2px solid ${member.checked ? '#4caf50' : 'rgba(255,255,255,0.3)'}`,
+                            background: member.checked ? '#4caf50' : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            {member.checked && <Check size={14} color="#fff" />}
+                          </div>
+                          <div style={{width: 32, color: 'var(--text-secondary)', fontWeight: 'bold'}}>{member.number}</div>
+                          <div style={{flex: 1}}>
+                            {member.name}
+                            {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>{member.age}歳</span>}
+                            {member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>{member.referee}</span>}
+                            {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
+                          </div>
+                        </div>
+                      ))}
                   </div>
-                ))}
-            </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
