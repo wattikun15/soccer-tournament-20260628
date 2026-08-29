@@ -302,7 +302,7 @@ function App() {
       {/* Header */}
       <header className="header no-print">
         <div>
-          <h1>8/30(日)中野区ミニサッカー シニア大会@平和の森公園</h1>
+          <h1>8/30(日)中野区ミニサッカー 一般大会@平和の森公園</h1>
           <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
             <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
               <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
