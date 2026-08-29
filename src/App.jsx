@@ -31,6 +31,7 @@ function App() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [rosterTeamId, setRosterTeamId] = useState(null);
 
   // Helper functions to save data to cloud
   const saveMatchesToCloud = async (updatedMatches) => {
@@ -180,6 +181,10 @@ function App() {
 
   const closeModal = () => {
     setSelectedMatch(null);
+  };
+
+  const closeRosterModal = () => {
+    setRosterTeamId(null);
   };
 
   const addGoal = (teamId) => {
@@ -368,6 +373,55 @@ function App() {
         </div>
       )}
 
+      {/* チームメンバー表 モーダル（試合管理画面のチーム名タップ用） */}
+      {rosterTeamId && (
+        <div
+          style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16}}
+          onClick={closeRosterModal}
+        >
+          <div
+            style={{background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', borderRadius: 16, padding: 24, width: 400, maxWidth: '100%', maxHeight: '80vh', overflowY: 'auto', border: '1px solid var(--glass-border)', position: 'relative'}}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={closeRosterModal}
+              style={{
+                position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,0.1)', border: 'none',
+                color: 'var(--text-primary)', cursor: 'pointer', padding: 6, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              <X size={20} />
+            </button>
+            <h3 style={{textAlign: 'center', marginBottom: 20}}>
+              {getTeam(rosterTeamId)?.emoji} {getTeam(rosterTeamId)?.name} メンバー表
+            </h3>
+            <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+              {members.filter(m => m.teamId === rosterTeamId).length === 0 && (
+                <p style={{color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0'}}>メンバーが登録されていません</p>
+              )}
+              {members
+                .filter(m => m.teamId === rosterTeamId)
+                .sort((a, b) => Number(a.number) - Number(b.number))
+                .map(member => (
+                  <div
+                    key={member.id}
+                    style={{display: 'flex', alignItems: 'center', gap: 16, background: 'rgba(0,0,0,0.2)', padding: '10px 14px', borderRadius: 8}}
+                  >
+                    <div style={{width: 32, color: 'var(--text-secondary)', fontWeight: 'bold'}}>{member.number}</div>
+                    <div style={{flex: 1}}>
+                      {member.name}
+                      {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>{member.age}歳</span>}
+                      {member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>{member.referee}</span>}
+                      {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <main className="no-print">
         {activeTab === 'schedule' && (
@@ -500,23 +554,43 @@ function App() {
               
               <div className="teams-container" style={{marginBottom: 24}}>
                 <div className="team home">
-                  <div className="team-logo" style={{width: 64, height: 64, fontSize: '2rem'}}>
+                  <div
+                    className="team-logo"
+                    style={{width: 64, height: 64, fontSize: '2rem', cursor: selectedMatch.homeId ? 'pointer' : 'default'}}
+                    onClick={() => selectedMatch.homeId && setRosterTeamId(selectedMatch.homeId)}
+                  >
                     {getTeam(selectedMatch.homeId)?.emoji || '❓'}
                   </div>
-                  <div className="team-name">{getTeam(selectedMatch.homeId)?.name || '未定'}</div>
+                  <div
+                    className="team-name"
+                    style={{cursor: selectedMatch.homeId ? 'pointer' : 'default', textDecoration: selectedMatch.homeId ? 'underline dotted' : 'none'}}
+                    onClick={() => selectedMatch.homeId && setRosterTeamId(selectedMatch.homeId)}
+                  >
+                    {getTeam(selectedMatch.homeId)?.name || '未定'}
+                  </div>
                 </div>
-                
+
                 <div className="score">
                   <span>{selectedMatch.homeScore}</span>
                   <span className="score-dash">-</span>
                   <span>{selectedMatch.awayScore}</span>
                 </div>
-                
+
                 <div className="team away">
-                  <div className="team-logo" style={{width: 64, height: 64, fontSize: '2rem'}}>
+                  <div
+                    className="team-logo"
+                    style={{width: 64, height: 64, fontSize: '2rem', cursor: selectedMatch.awayId ? 'pointer' : 'default'}}
+                    onClick={() => selectedMatch.awayId && setRosterTeamId(selectedMatch.awayId)}
+                  >
                     {getTeam(selectedMatch.awayId)?.emoji || '❓'}
                   </div>
-                  <div className="team-name">{getTeam(selectedMatch.awayId)?.name || '未定'}</div>
+                  <div
+                    className="team-name"
+                    style={{cursor: selectedMatch.awayId ? 'pointer' : 'default', textDecoration: selectedMatch.awayId ? 'underline dotted' : 'none'}}
+                    onClick={() => selectedMatch.awayId && setRosterTeamId(selectedMatch.awayId)}
+                  >
+                    {getTeam(selectedMatch.awayId)?.name || '未定'}
+                  </div>
                 </div>
               </div>
 
