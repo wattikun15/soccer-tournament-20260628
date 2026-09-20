@@ -5,7 +5,7 @@ import { ensureAuth, auth } from './firebase';
 import './index.css';
 
 // Firebase Realtime Database URL
-const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260830';
+const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260922';
 
 // 管理者PIN（4桁）
 const ADMIN_PIN = '1234';
@@ -307,7 +307,7 @@ function App() {
       {/* Header */}
       <header className="header no-print">
         <div>
-          <h1>8/30(日)中野区ミニサッカー 一般大会@平和の森公園</h1>
+          <h1>9/22(火)中野区ミニサッカー 一般大会@平和の森公園</h1>
           <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
             <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
               <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
@@ -1069,7 +1069,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
           <div className="print-page">
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年8月30日（日）　会場：平和の森公園</p>
+          <p>開催日：2026年9月22日（火）　会場：平和の森公園</p>
         </div>
         <div className="print-grid">
           {leagueMatches.slice(0, 4).map(renderMatchCard)}
@@ -1080,7 +1080,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}（続き）/ 星取表・集計表 {printMode === 'result' ? '(結果)' : ''}</h1>
-          <p>開催日：2026年8月30日（日）　会場：平和の森公園</p>
+          <p>開催日：2026年9月22日（火）　会場：平和の森公園</p>
         </div>
         <div className="print-grid">
           {leagueMatches.slice(4).map(renderMatchCard)}
@@ -1155,7 +1155,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>決勝トーナメント {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年8月30日（日）　会場：平和の森公園</p>
+          <p>開催日：2026年9月22日（火）　会場：平和の森公園</p>
         </div>
         <div className="print-grid">
           {knockoutMatches.map(renderMatchCard)}
@@ -1171,7 +1171,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
           {/* Page 4: Rules */}
           <div className="print-title" style={{marginBottom: '8mm'}}>
             <h1>中野区ミニサッカー シニア大会のルール</h1>
-            <p>※2026年8月30日更新</p>
+            <p>※2026年9月22日更新</p>
           </div>
           <div style={{fontSize: '10pt', lineHeight: '1.6'}}>
             <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■基本情報</h2>

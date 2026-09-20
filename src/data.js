@@ -1,20 +1,20 @@
-// 8/30(日)中野区ミニサッカー 一般大会@平和の森公園
+// 9/22(火)中野区ミニサッカー 一般大会@平和の森公園
 export const initialTeams = [
-  { id: 't1', name: 'GA', emoji: '🦁' },
+  { id: 't1', name: 'ケンFC', emoji: '🦅' },
   { id: 't2', name: 'ミナミダイFC', emoji: '🦉' },
-  { id: 't3', name: 'OneKameido', emoji: '🐢' },
-  { id: 't4', name: 'かきっぱち', emoji: '🐿️' }
+  { id: 't3', name: 'GA', emoji: '🦁' },
+  { id: 't4', name: 'ALL ROUNDER F.C.', emoji: '⚡' }
 ];
 
 export const initialMembers = [];
 
 export const initialMatches = [
-  { id: 'm1', stage: 'league', date: '13:15', homeId: 't3', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第1試合', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
-  { id: 'm2', stage: 'league', date: '13:42', homeId: 't1', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第2試合', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
-  { id: 'm3', stage: 'league', date: '14:09', homeId: 't3', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第3試合', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
-  { id: 'm4', stage: 'league', date: '14:36', homeId: 't1', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第4試合', refereeTeamId: 't4', refereePlayerId: null, goals: [] },
-  { id: 'm5', stage: 'league', date: '15:03', homeId: 't3', awayId: 't1', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第5試合', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
-  { id: 'm6', stage: 'league', date: '15:30', homeId: 't2', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第6試合', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
+  { id: 'm1', stage: 'league', date: '13:15', homeId: 't1', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第1試合', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
+  { id: 'm2', stage: 'league', date: '13:42', homeId: 't2', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第2試合', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
+  { id: 'm3', stage: 'league', date: '14:09', homeId: 't1', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第3試合', refereeTeamId: 't2', refereePlayerId: null, goals: [] },
+  { id: 'm4', stage: 'league', date: '14:36', homeId: 't4', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第4試合', refereeTeamId: 't3', refereePlayerId: null, goals: [] },
+  { id: 'm5', stage: 'league', date: '15:03', homeId: 't1', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第5試合', refereeTeamId: 't4', refereePlayerId: null, goals: [] },
+  { id: 'm6', stage: 'league', date: '15:30', homeId: 't3', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第6試合', refereeTeamId: 't1', refereePlayerId: null, goals: [] },
   { id: 'm7', stage: 'third_place', date: '15:59', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '三位決定戦', refereeTeamId: null, refereePlayerId: null, goals: [] },
   { id: 'm8', stage: 'final', date: '16:26', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝戦', refereeTeamId: null, refereePlayerId: null, goals: [] }
 ];
@@ -71,27 +71,28 @@ export const calculateStandings = (teams, matches) => {
   });
 };
 
+
 export const initialTimetable = [
   { time: '12:45',          label: '集合（代表の方）',        detail: 'メンバー表の提出、背番号、ユニフォームの確認' },
   { time: '13:00 - 13:05',  label: '開場・準備・アップ',      duration: '5m' },
   { time: '13:05 - 13:10',  label: '開会式',                  duration: '5m' },
   { time: '13:10 - 13:15',  label: '予選 第1試合【準備】',    duration: '5m', detail: 'メンバーチェック・挨拶含む' },
-  { time: '13:15 - 13:37',  label: '予選 第1試合',            duration: '22m', detail: 'OneKameido vs ミナミダイFC　審判：GA (前半10分-HT2分-後半10分)' },
+  { time: '13:15 - 13:37',  label: '予選 第1試合',            duration: '22m', detail: 'ケンFC vs ALL ROUNDER F.C.　審判：ミナミダイFC (前半10分-HT2分-後半10分)' },
   { time: '13:37 - 13:42',  label: '予選 第2試合【準備】',    duration: '5m', detail: 'メンバーチェック・挨拶含む' },
-  { time: '13:42 - 14:04',  label: '予選 第2試合',            duration: '22m', detail: 'GA vs かきっぱち（連戦）　審判：ミナミダイFC' },
+  { time: '13:42 - 14:04',  label: '予選 第2試合',            duration: '22m', detail: 'ミナミダイFC vs GA（連戦）　審判：ケンFC' },
   { time: '14:04 - 14:09',  label: '予選 第3試合【準備】',    duration: '5m', detail: '挨拶含む' },
-  { time: '14:09 - 14:31',  label: '予選 第3試合',            duration: '22m', detail: 'OneKameido vs かきっぱち（連戦）　審判：GA' },
+  { time: '14:09 - 14:31',  label: '予選 第3試合',            duration: '22m', detail: 'ケンFC vs GA（連戦）　審判：ミナミダイFC' },
   { time: '14:31 - 14:36',  label: '予選 第4試合【準備】',    duration: '5m', detail: '挨拶含む' },
-  { time: '14:36 - 14:58',  label: '予選 第4試合',            duration: '22m', detail: 'GA（連戦） vs ミナミダイFC　審判：かきっぱち' },
+  { time: '14:36 - 14:58',  label: '予選 第4試合',            duration: '22m', detail: 'ALL ROUNDER F.C. vs ミナミダイFC（連戦）　審判：GA' },
   { time: '14:58 - 15:03',  label: '予選 第5試合【準備】',    duration: '5m', detail: '挨拶含む' },
-  { time: '15:03 - 15:25',  label: '予選 第5試合',            duration: '22m', detail: 'OneKameido vs GA（連戦）　審判：ミナミダイFC' },
+  { time: '15:03 - 15:25',  label: '予選 第5試合',            duration: '22m', detail: 'ケンFC vs ミナミダイFC（連戦）　審判：ALL ROUNDER F.C.' },
   { time: '15:25 - 15:30',  label: '予選 第6試合【準備】',    duration: '5m', detail: '挨拶含む' },
-  { time: '15:30 - 15:52',  label: '予選 第6試合',            duration: '22m', detail: 'ミナミダイFC vs かきっぱち　審判：OneKameido' },
-  { time: '15:52 - 15:54',  label: '写真撮影',                duration: '2m', detail: '区・協会への報告、HP用' },
+  { time: '15:30 - 15:52',  label: '予選 第6試合',            duration: '22m', detail: 'GA vs ALL ROUNDER F.C.　審判：ケンFC' },
+  { time: '15:52 - 15:54',  label: '写真撒影',                duration: '2m', detail: '区・協会への報告、HP用' },
   { time: '15:54 - 15:59',  label: '三位決定戦【準備】',      duration: '5m' },
-  { time: '15:59 - 16:21',  label: '三位決定戦',              duration: '22m', detail: '予選3位 vs 予選4位　審判：予選2位' },
+  { time: '15:59 - 16:21',  label: '三位決定戦',              duration: '22m', detail: '予選３位 vs 予選４位　審判：予選２位' },
   { time: '16:21 - 16:26',  label: '決勝戦【準備】',          duration: '5m' },
-  { time: '16:26 - 16:48',  label: '決勝戦',                  duration: '22m', detail: '予選1位 vs 予選2位　審判：予選4位' },
+  { time: '16:26 - 16:48',  label: '決勝戦',                  duration: '22m', detail: '予選１位 vs 予選２位　審判：予選４位' },
   { time: '16:48 - 16:50',  label: '予備時間',                duration: '2m' },
-  { time: '16:50 - 17:00',  label: '片づけ・撤収',            duration: '10m' },
+  { time: '16:50 - 17:00',  label: '片づけ・摂収',            duration: '10m' },
 ];
