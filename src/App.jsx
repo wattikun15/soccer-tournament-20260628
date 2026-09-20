@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2, Lock, Unlock, BookOpen } from 'lucide-react';
-import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable } from './data';
+import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2, BookOpen } from 'lucide-react';
+import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable, teamSummary } from './data';
 import { ensureAuth, auth } from './firebase';
 import './index.css';
 
 // Firebase Realtime Database URL
 const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260922';
 
-// 管理者PIN（4桁）
-const ADMIN_PIN = '1234';
+
 
 // Fetch wrapper that signs in anonymously and attaches the auth token
 // required by the Realtime Database rules.
@@ -27,10 +26,7 @@ function App() {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [printMode, setPrintMode] = useState('blank');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState(false);
+  const isAdmin = true;
   const [rosterTeamId, setRosterTeamId] = useState(null);
 
   // Helper functions to save data to cloud
@@ -150,33 +146,10 @@ function App() {
   const standings = calculateStandings(teams, matches);
 
   const handleMatchClick = (match) => {
-    if (!isAdmin) return;
     setSelectedMatch({ 
       ...match,
       goals: match.goals ? [...match.goals] : []
     });
-  };
-
-  const handlePinSubmit = () => {
-    if (pinInput === ADMIN_PIN) {
-      setIsAdmin(true);
-      setShowPinModal(false);
-      setPinInput('');
-      setPinError(false);
-    } else {
-      setPinError(true);
-      setPinInput('');
-    }
-  };
-
-  const handleAdminToggle = () => {
-    if (isAdmin) {
-      setIsAdmin(false);
-    } else {
-      setShowPinModal(true);
-      setPinInput('');
-      setPinError(false);
-    }
   };
 
   const closeModal = () => {
@@ -317,61 +290,10 @@ function App() {
             </span>
           </div>
         </div>
-        <button
-          onClick={handleAdminToggle}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 14px', borderRadius: 12, border: 'none',
-            background: isAdmin ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.08)',
-            color: isAdmin ? '#4caf50' : 'var(--text-secondary)',
-            cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold',
-            transition: 'all 0.2s', flexShrink: 0
-          }}
-        >
-          {isAdmin ? <><Unlock size={16} /> 管理者</> : <><Lock size={16} /> 🔒</>}
-        </button>
+
       </header>
 
-      {/* PIN入力モーダル */}
-      {showPinModal && (
-        <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999}}
-          onClick={() => setShowPinModal(false)}
-        >
-          <div style={{background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', borderRadius: 16, padding: 32, width: 320, border: '1px solid var(--glass-border)'}}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 style={{textAlign: 'center', marginBottom: 20}}>🔐 管理者PIN入力</h3>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="new-password"
-              name="pin-code-dummy"
-              data-lpignore="true"
-              maxLength={4}
-              value={pinInput}
-              onChange={e => { setPinInput(e.target.value.replace(/[^0-9]/g, '')); setPinError(false); }}
-              onKeyDown={e => { if (e.key === 'Enter') handlePinSubmit(); }}
-              placeholder="4桁のPINを入力"
-              autoFocus
-              style={{
-                width: '100%', padding: '14px', borderRadius: 10,
-                border: `2px solid ${pinError ? 'var(--danger)' : 'rgba(255,255,255,0.2)'}`,
-                background: 'rgba(0,0,0,0.3)', color: '#fff',
-                fontSize: '1.5rem', textAlign: 'center', letterSpacing: '0.5em',
-                outline: 'none'
-              }}
-            />
-            {pinError && <p style={{color: 'var(--danger)', textAlign: 'center', marginTop: 8, fontSize: '0.85rem'}}>PINが正しくありません</p>}
-            <button
-              onClick={handlePinSubmit}
-              className="btn btn-primary"
-              style={{width: '100%', marginTop: 16, padding: 14}}
-            >
-              ロック解除
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* チームメンバー表 モーダル（試合管理画面のチーム名タップ用） */}
       {rosterTeamId && (
@@ -1331,6 +1253,38 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick, isAdmin }) {
               </div>
             ))}
           </div>
+
+          {teamSummary && teamSummary.length > 0 && (
+            <div className="glass-card" style={{padding: '16px', cursor: 'default'}}>
+              <h4 style={{fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6}}>
+                📋 チーム別サマリー
+              </h4>
+              <div style={{overflowX: 'auto'}}>
+                <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center'}}>
+                  <thead>
+                    <tr style={{borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-secondary)'}}>
+                      <th style={{padding: '6px 8px', textAlign: 'left'}}>チーム</th>
+                      <th style={{padding: '6px 8px'}}>試合数</th>
+                      <th style={{padding: '6px 8px'}}>試合時間</th>
+                      <th style={{padding: '6px 8px'}}>審判</th>
+                      <th style={{padding: '6px 8px'}}>初戦</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamSummary.map((ts, idx) => (
+                      <tr key={idx} style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
+                        <td style={{padding: '8px', textAlign: 'left', fontWeight: 'bold', color: 'var(--text-primary)'}}>{ts.team}</td>
+                        <td style={{padding: '8px'}}>{ts.matches}</td>
+                        <td style={{padding: '8px'}}>{ts.matchTime}</td>
+                        <td style={{padding: '8px'}}>{ts.referee}</td>
+                        <td style={{padding: '8px', color: 'var(--accent-color)', fontWeight: 'bold'}}>{ts.firstMatch}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
