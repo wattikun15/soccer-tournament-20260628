@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Trophy, Users, Plus, Minus, X, Check, Edit2, Save, Trash2, BookOpen } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Calendar, Trophy, Users, Plus, X, Check, Edit2, Save, Trash2, BookOpen, Sun, Moon } from 'lucide-react';
 import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable, teamSummary } from './data';
 import { ensureAuth, auth } from './firebase';
 import './index.css';
@@ -28,6 +28,24 @@ function App() {
   const [printMode, setPrintMode] = useState('blank');
   const isAdmin = true;
   const [rosterTeamId, setRosterTeamId] = useState(null);
+  const [showGoalTeamPicker, setShowGoalTeamPicker] = useState(false);
+  const [showCardTeamPicker, setShowCardTeamPicker] = useState(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const initialMatchSnapshotRef = useRef('');
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('tournament_theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('tournament_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   // Helper functions to save data to cloud
   const saveMatchesToCloud = async (updatedMatches) => {
@@ -145,16 +163,91 @@ function App() {
   // Calculate standings whenever matches change
   const standings = calculateStandings(teams, matches);
 
-  const handleMatchClick = (match) => {
-    setSelectedMatch({ 
-      ...match,
-      goals: match.goals ? [...match.goals] : []
+  const serializeMatchState = (m) => {
+    if (!m) return '';
+    return JSON.stringify({
+      label: m.label || '',
+      date: m.date || '',
+      actualStartTime: m.actualStartTime || null,
+      refereeTeamId: m.refereeTeamId || null,
+      refereePlayerId: m.refereePlayerId || null,
+      homeId: m.homeId || null,
+      awayId: m.awayId || null,
+      goals: (m.goals || []).map(g => ({
+        id: g.id,
+        teamId: g.teamId,
+        scorerId: g.scorerId,
+        assistId: g.assistId,
+        type: g.type,
+        order: g.order
+      })),
+      cards: (m.cards || []).map(c => ({
+        id: c.id,
+        teamId: c.teamId,
+        playerId: c.playerId,
+        type: c.type,
+        order: c.order
+      }))
     });
   };
 
-  const closeModal = () => {
-    setSelectedMatch(null);
+  const getNextOrder = (currentMatch) => {
+    const goals = currentMatch.goals || [];
+    const cards = currentMatch.cards || [];
+    const maxOrder = Math.max(
+      0,
+      ...goals.map(g => (typeof g.order === 'number' ? g.order : 0)),
+      ...cards.map(c => (typeof c.order === 'number' ? c.order : 0))
+    );
+    return maxOrder + 1;
   };
+
+  const handleMatchClick = (match) => {
+    let orderCounter = 1;
+    const goals = (match.goals ? [...match.goals] : []).map((g, idx) => ({
+      ...g,
+      id: g.id || `g_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 4)}`,
+      order: typeof g.order === 'number' ? g.order : orderCounter++
+    }));
+    const cards = (match.cards ? [...match.cards] : []).map((c, idx) => ({
+      ...c,
+      id: c.id || `c_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 4)}`,
+      order: typeof c.order === 'number' ? c.order : orderCounter++
+    }));
+
+    const prepared = { 
+      ...match,
+      goals,
+      cards
+    };
+
+    initialMatchSnapshotRef.current = serializeMatchState(prepared);
+    setSelectedMatch(prepared);
+    setShowDiscardConfirm(false);
+    setShowGoalTeamPicker(false);
+    setShowCardTeamPicker(null);
+  };
+
+  const hasUnsavedChanges = selectedMatch 
+    ? serializeMatchState(selectedMatch) !== initialMatchSnapshotRef.current 
+    : false;
+
+  const forceCloseModal = () => {
+    setSelectedMatch(null);
+    setShowDiscardConfirm(false);
+    setShowGoalTeamPicker(false);
+    setShowCardTeamPicker(null);
+  };
+
+  const handleCloseAttempt = () => {
+    if (hasUnsavedChanges) {
+      setShowDiscardConfirm(true);
+    } else {
+      forceCloseModal();
+    }
+  };
+
+  const closeModal = handleCloseAttempt;
 
   const closeRosterModal = () => {
     setRosterTeamId(null);
@@ -162,14 +255,16 @@ function App() {
 
   const addGoal = (teamId) => {
     if (!selectedMatch) return;
+    const nextOrder = getNextOrder(selectedMatch);
     const newGoal = {
       id: 'g_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-      teamId,
+      teamId: teamId || selectedMatch.homeId || '',
       scorerId: null,
       assistId: null,
-      type: 'normal'
+      type: 'normal',
+      order: nextOrder
     };
-    const updatedGoals = [...selectedMatch.goals, newGoal];
+    const updatedGoals = [...(selectedMatch.goals || []), newGoal];
     const homeScore = updatedGoals.filter(g => g.teamId === selectedMatch.homeId).length;
     const awayScore = updatedGoals.filter(g => g.teamId === selectedMatch.awayId).length;
 
@@ -181,9 +276,12 @@ function App() {
     });
   };
 
-  const removeGoal = (goalId) => {
+  const removeGoal = (goalId, fallbackIndex) => {
     if (!selectedMatch) return;
-    const updatedGoals = selectedMatch.goals.filter(g => g.id !== goalId);
+    const updatedGoals = (selectedMatch.goals || []).filter((g, idx) => {
+      if (goalId && g.id) return g.id !== goalId;
+      return idx !== fallbackIndex;
+    });
     const homeScore = updatedGoals.filter(g => g.teamId === selectedMatch.homeId).length;
     const awayScore = updatedGoals.filter(g => g.teamId === selectedMatch.awayId).length;
 
@@ -197,12 +295,105 @@ function App() {
 
   const updateGoalDetail = (goalId, field, val) => {
     if (!selectedMatch) return;
-    const updatedGoals = selectedMatch.goals.map(g => 
+    const updatedGoals = (selectedMatch.goals || []).map(g => 
       g.id === goalId ? { ...g, [field]: val || null } : g
     );
     setSelectedMatch({
       ...selectedMatch,
       goals: updatedGoals
+    });
+  };
+
+  const updateGoalTeam = (goalId, newTeamId) => {
+    if (!selectedMatch) return;
+    const updatedGoals = (selectedMatch.goals || []).map(g =>
+      g.id === goalId ? { ...g, teamId: newTeamId, scorerId: null, assistId: null } : g
+    );
+    const homeScore = updatedGoals.filter(g => g.teamId === selectedMatch.homeId).length;
+    const awayScore = updatedGoals.filter(g => g.teamId === selectedMatch.awayId).length;
+    setSelectedMatch({
+      ...selectedMatch,
+      goals: updatedGoals,
+      homeScore,
+      awayScore
+    });
+  };
+
+  const addCard = (teamId, type = 'yellow') => {
+    if (!selectedMatch) return;
+    const nextOrder = getNextOrder(selectedMatch);
+    const newCard = {
+      id: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      teamId: teamId || selectedMatch.homeId || '',
+      playerId: null,
+      type,
+      order: nextOrder
+    };
+    setSelectedMatch({
+      ...selectedMatch,
+      cards: [...(selectedMatch.cards || []), newCard]
+    });
+  };
+
+  const removeCard = (cardId, fallbackIndex) => {
+    if (!selectedMatch) return;
+    const updatedCards = (selectedMatch.cards || []).filter((c, idx) => {
+      if (cardId && c.id) return c.id !== cardId;
+      return idx !== fallbackIndex;
+    });
+    setSelectedMatch({
+      ...selectedMatch,
+      cards: updatedCards
+    });
+  };
+
+  const updateCardDetail = (cardId, field, val) => {
+    if (!selectedMatch) return;
+    setSelectedMatch({
+      ...selectedMatch,
+      cards: (selectedMatch.cards || []).map(c => {
+        if (c.id !== cardId) return c;
+        if (field === 'teamId') {
+          return { ...c, teamId: val, playerId: null };
+        }
+        return { ...c, [field]: val || null };
+      })
+    });
+  };
+
+  const moveTimelineItem = (timelineIndex, direction) => {
+    if (!selectedMatch) return;
+    const timeline = [
+      ...(selectedMatch.goals || []).map(g => ({ ...g, kind: 'goal' })),
+      ...(selectedMatch.cards || []).map(c => ({ ...c, kind: 'card' }))
+    ].sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const targetIndex = timelineIndex + direction;
+    if (targetIndex < 0 || targetIndex >= timeline.length) return;
+
+    // Swap adjacent items in timeline
+    const temp = timeline[timelineIndex];
+    timeline[timelineIndex] = timeline[targetIndex];
+    timeline[targetIndex] = temp;
+
+    // Reassign order sequentially 1, 2, 3...
+    const newGoals = [];
+    const newCards = [];
+    timeline.forEach((item, idx) => {
+      const updated = { ...item, order: idx + 1 };
+      if (item.kind === 'goal') {
+        const { kind: _kind, ...rest } = updated;
+        newGoals.push(rest);
+      } else {
+        const { kind: _kind, ...rest } = updated;
+        newCards.push(rest);
+      }
+    });
+
+    setSelectedMatch({
+      ...selectedMatch,
+      goals: newGoals,
+      cards: newCards
     });
   };
 
@@ -213,6 +404,7 @@ function App() {
       homeId: homeId || null,
       awayId: awayId || null,
       goals: [],
+      cards: [],
       homeScore: 0,
       awayScore: 0
     });
@@ -243,7 +435,7 @@ function App() {
     );
     setMatches(updated);
     await saveMatchesToCloud(updated);
-    closeModal();
+    forceCloseModal();
   };
 
   const handleSetMembers = async (updater) => {
@@ -279,18 +471,35 @@ function App() {
     <div className="container">
       {/* Header */}
       <header className="header no-print">
-        <div>
-          <h1>9/22(火)中野区ミニサッカー 一般大会@平和の森公園</h1>
+        <div style={{flex: 1}}>
+          <h1 style={{color: 'var(--text-primary)'}}>9/22(火)中野区ミニサッカー 一般大会@平和の森公園</h1>
           <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
             <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
               <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
             </span>
-            <span style={{fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 12}}>
-              中野区(在住・在勤): <span style={{color: '#fff', fontWeight: 'bold'}}>{members.filter(m => m.checked && (m.isNakano || m.isResident || m.isWorker)).length}</span>名
+            <span style={{fontSize: '0.8rem', background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', padding: '2px 8px', borderRadius: 12, color: 'var(--pill-text)'}}>
+              中野区(在住・在勤): <span style={{color: 'var(--accent-color)', fontWeight: 'bold'}}>{members.filter(m => m.checked && (m.isNakano || m.isResident || m.isWorker)).length}</span>名
             </span>
           </div>
         </div>
-
+        <button
+          onClick={toggleTheme}
+          className="theme-toggle-btn"
+          title={theme === 'dark' ? '日中屋外モードに切り替え' : 'ダークモードに切り替え'}
+          aria-label="テーマ切替"
+        >
+          {theme === 'dark' ? (
+            <>
+              <Sun size={15} color="var(--theme-btn-icon)" />
+              <span>☀️ 日中</span>
+            </>
+          ) : (
+            <>
+              <Moon size={15} color="var(--theme-btn-icon)" />
+              <span>🌙 ダーク</span>
+            </>
+          )}
+        </button>
       </header>
 
 
@@ -302,20 +511,20 @@ function App() {
           onClick={closeRosterModal}
         >
           <div
-            style={{background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', borderRadius: 16, padding: 24, width: 400, maxWidth: '100%', maxHeight: '80vh', overflowY: 'auto', border: '1px solid var(--glass-border)', position: 'relative'}}
+            style={{background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', borderRadius: 16, padding: 24, width: 400, maxWidth: '100%', maxHeight: '80vh', overflowY: 'auto', border: '1px solid var(--glass-border)', boxShadow: 'var(--card-shadow)', position: 'relative'}}
             onClick={e => e.stopPropagation()}
           >
             <button
               onClick={closeRosterModal}
               style={{
-                position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,0.1)', border: 'none',
+                position: 'absolute', top: 12, right: 12, background: 'var(--pill-bg)', border: '1px solid var(--glass-border)',
                 color: 'var(--text-primary)', cursor: 'pointer', padding: 6, borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
             >
               <X size={20} />
             </button>
-            <h3 style={{textAlign: 'center', marginBottom: 4}}>
+            <h3 style={{textAlign: 'center', marginBottom: 4, color: 'var(--text-primary)'}}>
               {getTeam(rosterTeamId)?.emoji} {getTeam(rosterTeamId)?.name} メンバー表
             </h3>
             {(() => {
@@ -328,7 +537,7 @@ function App() {
                 <>
                   <p style={{textAlign: 'center', marginBottom: 20, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
                     タップして出欠チェック
-                    <span style={{fontWeight: 'bold', color: rosterCheckedCount === rosterMembers.length && rosterMembers.length > 0 ? '#4caf50' : 'var(--accent-color)'}}>
+                    <span style={{marginLeft: 6, fontWeight: 'bold', color: rosterCheckedCount === rosterMembers.length && rosterMembers.length > 0 ? '#4caf50' : 'var(--accent-color)'}}>
                       {rosterCheckedCount} / {rosterMembers.length} 名
                     </span>
                   </p>
@@ -344,24 +553,24 @@ function App() {
                           onClick={() => toggleRosterCheck(member.id)}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 16,
-                            background: member.checked ? 'rgba(76, 175, 80, 0.2)' : 'rgba(0,0,0,0.2)',
-                            border: member.checked ? '1px solid rgba(76, 175, 80, 0.5)' : '1px solid transparent',
+                            background: member.checked ? 'var(--checked-bg)' : 'var(--item-sub-bg)',
+                            border: member.checked ? '1px solid var(--checked-border)' : '1px solid var(--border-subtle)',
                             padding: '10px 14px', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s'
                           }}
                         >
                           <div style={{
                             width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                            border: `2px solid ${member.checked ? '#4caf50' : 'rgba(255,255,255,0.3)'}`,
-                            background: member.checked ? '#4caf50' : 'transparent',
+                            border: `2px solid ${member.checked ? 'var(--accent-color)' : 'var(--border-subtle)'}`,
+                            background: member.checked ? 'var(--accent-color)' : 'transparent',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}>
                             {member.checked && <Check size={14} color="#fff" />}
                           </div>
                           <div style={{width: 32, color: 'var(--text-secondary)', fontWeight: 'bold'}}>{member.number}</div>
-                          <div style={{flex: 1}}>
+                          <div style={{flex: 1, color: member.checked ? 'var(--checked-text)' : 'var(--text-primary)', fontWeight: member.checked ? '600' : 'normal'}}>
                             {member.name}
                             {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>{member.age}歳</span>}
-                            {member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>{member.referee}</span>}
+                            {member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', padding: '2px 6px', borderRadius: 4, color: 'var(--pill-text)'}}>{member.referee}</span>}
                             {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                           </div>
                         </div>
@@ -381,43 +590,19 @@ function App() {
             <div style={{display: 'flex', justifyContent: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap'}}>
               <button
                 onClick={() => setActiveTab('rules')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 16px', borderRadius: 8, border: 'none',
-                  background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)',
-                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500,
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
-                onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
+                className="quick-action-btn"
               >
                 <BookOpen size={16} /> ルール
               </button>
               <button
                 onClick={() => handlePrint('blank')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 16px', borderRadius: 8, border: 'none',
-                  background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)',
-                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500,
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
-                onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
+                className="quick-action-btn"
               >
                 🖨️ 記録用紙
               </button>
               <button
                 onClick={() => handlePrint('result')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 16px', borderRadius: 8, border: 'none',
-                  background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)',
-                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500,
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => { e.target.style.background = 'var(--accent-color)'; e.target.style.color = '#fff'; }}
-                onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.08)'; e.target.style.color = 'var(--text-secondary)'; }}
+                className="quick-action-btn"
               >
                 📊 試合結果
               </button>
@@ -484,323 +669,775 @@ function App() {
       </nav>
 
       {/* Score & Referee Edit Modal */}
-      <div className={`modal-overlay ${selectedMatch ? 'open' : ''}`}>
+      <div 
+        className={`modal-overlay ${selectedMatch ? 'open' : ''}`}
+        onClick={handleCloseAttempt}
+      >
         <div className="modal-content" onClick={e => e.stopPropagation()} style={{position: 'relative'}}>
-          <button 
-            onClick={closeModal}
-            style={{
-              position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,0.1)', border: 'none',
-              color: 'var(--text-primary)', cursor: 'pointer', padding: 6, borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10
-            }}
-          >
-            <X size={20} />
-          </button>
+          {/* Header Action Bar */}
+          <div style={{
+            position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 8, zIndex: 10
+          }}>
+            {hasUnsavedChanges && (
+              <button
+                type="button"
+                onClick={() => saveMatch('finished')}
+                className="btn btn-primary"
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.82rem',
+                  fontWeight: 'bold',
+                  borderRadius: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.4)'
+                }}
+                title="結果を保存"
+              >
+                <Save size={14} /> 保存
+              </button>
+            )}
+            <button 
+              type="button"
+              onClick={handleCloseAttempt}
+              style={{
+                background: 'var(--pill-bg)', border: '1px solid var(--glass-border)',
+                color: 'var(--text-primary)', cursor: 'pointer', padding: 6, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+              title="閉じる"
+              aria-label="閉じる"
+            >
+              <X size={20} />
+            </button>
+          </div>
           <div className="modal-drag-handle"></div>
           
-          {selectedMatch && (
-            <>
-              <h2 style={{textAlign: 'center', marginBottom: 24}}>
-                {selectedMatch.label || 'リーグ戦'} - 試合管理
-              </h2>
-              
-              <div className="teams-container" style={{marginBottom: 24}}>
-                <div className="team home">
-                  <div
-                    className="team-logo"
-                    style={{width: 64, height: 64, fontSize: '2rem', cursor: selectedMatch.homeId ? 'pointer' : 'default'}}
-                    onClick={() => selectedMatch.homeId && setRosterTeamId(selectedMatch.homeId)}
-                  >
-                    {getTeam(selectedMatch.homeId)?.emoji || '❓'}
-                  </div>
-                  <div
-                    className="team-name"
-                    style={{cursor: selectedMatch.homeId ? 'pointer' : 'default', textDecoration: selectedMatch.homeId ? 'underline dotted' : 'none'}}
-                    onClick={() => selectedMatch.homeId && setRosterTeamId(selectedMatch.homeId)}
-                  >
-                    {getTeam(selectedMatch.homeId)?.name || '未定'}
-                  </div>
-                </div>
-
-                <div className="score">
-                  <span>{selectedMatch.homeScore}</span>
-                  <span className="score-dash">-</span>
-                  <span>{selectedMatch.awayScore}</span>
-                </div>
-
-                <div className="team away">
-                  <div
-                    className="team-logo"
-                    style={{width: 64, height: 64, fontSize: '2rem', cursor: selectedMatch.awayId ? 'pointer' : 'default'}}
-                    onClick={() => selectedMatch.awayId && setRosterTeamId(selectedMatch.awayId)}
-                  >
-                    {getTeam(selectedMatch.awayId)?.emoji || '❓'}
-                  </div>
-                  <div
-                    className="team-name"
-                    style={{cursor: selectedMatch.awayId ? 'pointer' : 'default', textDecoration: selectedMatch.awayId ? 'underline dotted' : 'none'}}
-                    onClick={() => selectedMatch.awayId && setRosterTeamId(selectedMatch.awayId)}
-                  >
-                    {getTeam(selectedMatch.awayId)?.name || '未定'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Match Label & Date Selector */}
-              <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
-                <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>試合情報の編集</h4>
-                <div style={{display: 'flex', gap: 16}}>
-                  <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
-                    <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>試合名 (ラベル)</span>
-                    <input 
-                      type="text" 
-                      value={selectedMatch.label || ''} 
-                      onChange={e => setSelectedMatch({ ...selectedMatch, label: e.target.value })}
-                      placeholder="例: 第1試合 / 予選A"
-                      className="edit-input"
-                      style={{width: '100%'}}
-                    />
-                  </div>
-                  <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
-                    <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>時間/日程</span>
-                    <input 
-                      type="text" 
-                      value={selectedMatch.date || ''} 
-                      onChange={e => setSelectedMatch({ ...selectedMatch, date: e.target.value })}
-                      placeholder="例: 13:00"
-                      className="edit-input"
-                      style={{width: '100%'}}
-                    />
-                  </div>
-                </div>
+          {selectedMatch && (() => {
+            const homeTeam = getTeam(selectedMatch.homeId);
+            const awayTeam = getTeam(selectedMatch.awayId);
+            return (
+              <>
+                <h2 style={{textAlign: 'center', marginBottom: 24}}>
+                  {selectedMatch.label || 'リーグ戦'} - 試合管理
+                </h2>
                 
-                <div style={{display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12, marginTop: 12}}>
-                  {!selectedMatch.actualStartTime ? (
-                    <button 
-                      onClick={() => {
-                        const now = new Date();
-                        const hh = String(now.getHours()).padStart(2, '0');
-                        const mm = String(now.getMinutes()).padStart(2, '0');
-                        setSelectedMatch({...selectedMatch, actualStartTime: `${hh}:${mm}`});
-                      }}
-                      className="btn btn-secondary" 
-                      style={{padding: '6px 12px', fontSize: '0.8rem'}}
+                <div className="teams-container" style={{marginBottom: 24}}>
+                  <div className="team home">
+                    <div
+                      className="team-logo"
+                      style={{width: 64, height: 64, fontSize: '2rem', cursor: selectedMatch.homeId ? 'pointer' : 'default'}}
+                      onClick={() => selectedMatch.homeId && setRosterTeamId(selectedMatch.homeId)}
                     >
-                      ⏱ 開始を打刻
-                    </button>
-                  ) : (
-                    <div style={{display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem'}}>
-                      <input
-                        type="time"
-                        value={selectedMatch.actualStartTime || ''}
-                        onChange={e => setSelectedMatch({ ...selectedMatch, actualStartTime: e.target.value })}
-                        style={{
-                          background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff',
-                          padding: '2px 6px', borderRadius: 4, fontSize: '0.85rem', outline: 'none', width: '80px'
-                        }}
+                      {homeTeam?.emoji || '❓'}
+                    </div>
+                    <div
+                      className="team-name"
+                      style={{cursor: selectedMatch.homeId ? 'pointer' : 'default', textDecoration: selectedMatch.homeId ? 'underline dotted' : 'none'}}
+                      onClick={() => selectedMatch.homeId && setRosterTeamId(selectedMatch.homeId)}
+                    >
+                      {homeTeam?.name || '未定'}
+                    </div>
+                  </div>
+
+                  <div className="score">
+                    <span>{selectedMatch.homeScore}</span>
+                    <span className="score-dash">-</span>
+                    <span>{selectedMatch.awayScore}</span>
+                  </div>
+
+                  <div className="team away">
+                    <div
+                      className="team-logo"
+                      style={{width: 64, height: 64, fontSize: '2rem', cursor: selectedMatch.awayId ? 'pointer' : 'default'}}
+                      onClick={() => selectedMatch.awayId && setRosterTeamId(selectedMatch.awayId)}
+                    >
+                      {awayTeam?.emoji || '❓'}
+                    </div>
+                    <div
+                      className="team-name"
+                      style={{cursor: selectedMatch.awayId ? 'pointer' : 'default', textDecoration: selectedMatch.awayId ? 'underline dotted' : 'none'}}
+                      onClick={() => selectedMatch.awayId && setRosterTeamId(selectedMatch.awayId)}
+                    >
+                      {awayTeam?.name || '未定'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Match Label & Date Selector */}
+                <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
+                  <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>試合情報の編集</h4>
+                  <div style={{display: 'flex', gap: 16}}>
+                    <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
+                      <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>試合名 (ラベル)</span>
+                      <input 
+                        type="text" 
+                        value={selectedMatch.label || ''} 
+                        onChange={e => setSelectedMatch({ ...selectedMatch, label: e.target.value })}
+                        placeholder="例: 第1試合 / 予選A"
+                        className="edit-input"
+                        style={{width: '100%'}}
                       />
-                      {selectedMatch.date ? (() => {
-                        const diffInfo = calculateTimeDiff(selectedMatch.date, selectedMatch.actualStartTime);
-                        if (!diffInfo) return null;
-                        return <span style={{color: diffInfo.color, fontWeight: 'bold'}}>{diffInfo.text}</span>;
-                      })() : null}
+                    </div>
+                    <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
+                      <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>時間/日程</span>
+                      <input 
+                        type="text" 
+                        value={selectedMatch.date || ''} 
+                        onChange={e => setSelectedMatch({ ...selectedMatch, date: e.target.value })}
+                        placeholder="例: 13:00"
+                        className="edit-input"
+                        style={{width: '100%'}}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div style={{display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid var(--border-subtle)', paddingTop: 12, marginTop: 12}}>
+                    {!selectedMatch.actualStartTime ? (
                       <button 
-                        onClick={() => setSelectedMatch({...selectedMatch, actualStartTime: null})}
-                        style={{background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline', marginLeft: 4}}
+                        onClick={() => {
+                          const now = new Date();
+                          const hh = String(now.getHours()).padStart(2, '0');
+                          const mm = String(now.getMinutes()).padStart(2, '0');
+                          setSelectedMatch({...selectedMatch, actualStartTime: `${hh}:${mm}`});
+                        }}
+                        className="btn btn-secondary" 
+                        style={{padding: '6px 12px', fontSize: '0.8rem'}}
                       >
-                        取消
+                        ⏱ 開始を打刻
+                      </button>
+                    ) : (
+                      <div style={{display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem'}}>
+                        <input
+                          type="time"
+                          value={selectedMatch.actualStartTime || ''}
+                          onChange={e => setSelectedMatch({ ...selectedMatch, actualStartTime: e.target.value })}
+                          style={{
+                            background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)',
+                            padding: '2px 6px', borderRadius: 4, fontSize: '0.85rem', outline: 'none', width: '80px'
+                          }}
+                        />
+                        {selectedMatch.date ? (() => {
+                          const diffInfo = calculateTimeDiff(selectedMatch.date, selectedMatch.actualStartTime);
+                          if (!diffInfo) return null;
+                          return <span style={{color: diffInfo.color, fontWeight: 'bold'}}>{diffInfo.text}</span>;
+                        })() : null}
+                        <button 
+                          onClick={() => setSelectedMatch({...selectedMatch, actualStartTime: null})}
+                          style={{background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline', marginLeft: 4}}
+                        >
+                          取消
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tournament Match Team Selector */}
+                {selectedMatch.stage !== 'league' && (
+                  <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
+                    <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>対戦チームの設定</h4>
+                    <div style={{display: 'flex', gap: 16}}>
+                      <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
+                        <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>ホーム（左）</span>
+                        <select 
+                          value={selectedMatch.homeId || ''} 
+                          onChange={e => updateMatchTeams(e.target.value, selectedMatch.awayId)}
+                          className="edit-input"
+                          style={{width: '100%'}}
+                        >
+                          <option value="">未定</option>
+                          {teams.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
+                        <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>アウェイ（右）</span>
+                        <select 
+                          value={selectedMatch.awayId || ''} 
+                          onChange={e => updateMatchTeams(selectedMatch.homeId, e.target.value)}
+                          className="edit-input"
+                          style={{width: '100%'}}
+                        >
+                          <option value="">未定</option>
+                          {teams.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Unified Match Events (Goals & Cards) Timeline Panel */}
+                <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 6}}>
+                    <h4 style={{fontSize: '0.95rem', color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 6}}>
+                      <span>⏱️ 試合イベント（得点・カード）の時系列管理</span>
+                    </h4>
+                    <span style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>
+                      得点: {(selectedMatch.goals || []).length} / 🟨 {(selectedMatch.cards || []).filter(c => c.type === 'yellow').length} / 🟥 {(selectedMatch.cards || []).filter(c => c.type === 'red').length}
+                    </span>
+                  </div>
+
+                  {/* Team Picker for Goal */}
+                  {showGoalTeamPicker && (
+                    <div style={{background: 'var(--item-sub-bg)', border: '1px solid var(--accent-color)', borderRadius: 10, padding: 12, marginBottom: 16}}>
+                      <div style={{fontSize: '0.85rem', fontWeight: 'bold', marginBottom: 8, color: 'var(--text-primary)'}}>
+                        得点したチームを選択してください:
+                      </div>
+                      <div style={{display: 'flex', gap: 10, flexWrap: 'wrap'}}>
+                        {homeTeam && (
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            style={{flex: 1, padding: '10px 8px', fontSize: '0.85rem', marginBottom: 0}}
+                            onClick={() => { addGoal(selectedMatch.homeId); setShowGoalTeamPicker(false); }}
+                          >
+                            {homeTeam.emoji} {homeTeam.name}
+                          </button>
+                        )}
+                        {awayTeam && (
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            style={{flex: 1, padding: '10px 8px', fontSize: '0.85rem', marginBottom: 0}}
+                            onClick={() => { addGoal(selectedMatch.awayId); setShowGoalTeamPicker(false); }}
+                          >
+                            {awayTeam.emoji} {awayTeam.name}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{width: 'auto', padding: '10px 14px', fontSize: '0.85rem', marginBottom: 0}}
+                          onClick={() => setShowGoalTeamPicker(false)}
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Team Picker for Card */}
+                  {showCardTeamPicker && (
+                    <div style={{background: 'var(--item-sub-bg)', border: `1px solid ${showCardTeamPicker.type === 'red' ? '#ef4444' : '#f59e0b'}`, borderRadius: 10, padding: 12, marginBottom: 16}}>
+                      <div style={{fontSize: '0.85rem', fontWeight: 'bold', marginBottom: 8, color: 'var(--text-primary)'}}>
+                        {showCardTeamPicker.type === 'red' ? '🟥 レッドカード' : '🟨 イエローカード'} を受けるチームを選択:
+                      </div>
+                      <div style={{display: 'flex', gap: 10, flexWrap: 'wrap'}}>
+                        {homeTeam && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{flex: 1, padding: '10px 8px', fontSize: '0.85rem', marginBottom: 0, borderColor: showCardTeamPicker.type === 'red' ? '#ef4444' : '#f59e0b'}}
+                            onClick={() => { addCard(selectedMatch.homeId, showCardTeamPicker.type); setShowCardTeamPicker(null); }}
+                          >
+                            {homeTeam.emoji} {homeTeam.name}
+                          </button>
+                        )}
+                        {awayTeam && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{flex: 1, padding: '10px 8px', fontSize: '0.85rem', marginBottom: 0, borderColor: showCardTeamPicker.type === 'red' ? '#ef4444' : '#f59e0b'}}
+                            onClick={() => { addCard(selectedMatch.awayId, showCardTeamPicker.type); setShowCardTeamPicker(null); }}
+                          >
+                            {awayTeam.emoji} {awayTeam.name}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{width: 'auto', padding: '10px 14px', fontSize: '0.85rem', marginBottom: 0}}
+                          onClick={() => setShowCardTeamPicker(null)}
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons: Add Goal, Add Yellow, Add Red */}
+                  {!showGoalTeamPicker && !showCardTeamPicker && (
+                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, marginBottom: 16}}>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{padding: '10px 8px', fontSize: '0.85rem', marginBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6}}
+                        onClick={() => setShowGoalTeamPicker(true)}
+                        disabled={!selectedMatch.homeId && !selectedMatch.awayId}
+                      >
+                        <Plus size={16} /> ⚽ 得点を追加
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
+                          background: 'rgba(245, 158, 11, 0.15)', border: '1px solid #f59e0b',
+                          color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '0.85rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          transition: 'all 0.2s'
+                        }}
+                        onClick={() => setShowCardTeamPicker({ type: 'yellow' })}
+                        disabled={!selectedMatch.homeId && !selectedMatch.awayId}
+                      >
+                        <span>🟨</span> + イエロー
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
+                          background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444',
+                          color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '0.85rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          transition: 'all 0.2s'
+                        }}
+                        onClick={() => setShowCardTeamPicker({ type: 'red' })}
+                        disabled={!selectedMatch.homeId && !selectedMatch.awayId}
+                      >
+                        <span>🟥</span> + レッド
                       </button>
                     </div>
                   )}
-                </div>
-              </div>
 
-              {/* Tournament Match Team Selector */}
-              {selectedMatch.stage !== 'league' && (
-                <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
-                  <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>対戦チームの設定</h4>
-                  <div style={{display: 'flex', gap: 16}}>
-                    <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
-                      <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>ホーム（左）</span>
-                      <select 
-                        value={selectedMatch.homeId || ''} 
-                        onChange={e => updateMatchTeams(e.target.value, selectedMatch.awayId)}
-                        className="edit-input"
-                        style={{width: '100%'}}
-                      >
-                        <option value="">未定</option>
-                        {teams.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: 4}}>
-                      <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>アウェイ（右）</span>
-                      <select 
-                        value={selectedMatch.awayId || ''} 
-                        onChange={e => updateMatchTeams(selectedMatch.homeId, e.target.value)}
-                        className="edit-input"
-                        style={{width: '100%'}}
-                      >
-                        <option value="">未定</option>
-                        {teams.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              )}
+                  {/* Timeline Events List */}
+                  {(() => {
+                    const timeline = [
+                      ...(selectedMatch.goals || []).map((g, origIdx) => ({ ...g, kind: 'goal', origIdx })),
+                      ...(selectedMatch.cards || []).map((c, origIdx) => ({ ...c, kind: 'card', origIdx }))
+                    ].sort((a, b) => (a.order || 0) - (b.order || 0));
 
-              {/* Goal Scoring Panel */}
-              <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
-                <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>得点・アシストの入力</h4>
-                
-                <div style={{display: 'flex', gap: 16, marginBottom: 16}}>
-                  <button className="btn btn-primary" style={{flex: 1, padding: '12px', fontSize: '0.85rem', marginBottom: 0}} onClick={() => addGoal(selectedMatch.homeId)} disabled={!selectedMatch.homeId}>
-                    + 左チーム得点
-                  </button>
-                  <button className="btn btn-primary" style={{flex: 1, padding: '12px', fontSize: '0.85rem', marginBottom: 0}} onClick={() => addGoal(selectedMatch.awayId)} disabled={!selectedMatch.awayId}>
-                    + 右チーム得点
-                  </button>
-                </div>
+                    if (timeline.length === 0) {
+                      return (
+                        <p style={{color: 'var(--text-secondary)', textAlign: 'center', fontSize: '0.85rem', padding: '16px 0'}}>
+                          得点やカードの記録はありません
+                        </p>
+                      );
+                    }
 
-                {/* Goals list */}
-                <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
-                  {selectedMatch.goals.map((goal, idx) => {
-                    const goalTeam = getTeam(goal.teamId);
-                    const teamMembers = members
-                      .filter(m => m.teamId === goal.teamId)
-                      .sort((a, b) => Number(a.number) - Number(b.number));
                     return (
-                      <div key={goal.id} style={{display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.15)', padding: '8px 12px', borderRadius: 8, fontSize: '0.85rem'}}>
-                        <span style={{fontWeight: 'bold', color: 'var(--accent-color)'}}>{goalTeam?.emoji}</span>
-                        <select 
-                          value={goal.type || 'normal'} 
-                          onChange={e => updateGoalDetail(goal.id, 'type', e.target.value)}
-                          className="edit-input"
-                          style={{padding: '4px 6px', fontSize: '0.8rem', width: '56px'}}
-                        >
-                          <option value="normal">流れ</option>
-                          <option value="pk">PK</option>
-                          <option value="fk">FK</option>
-                        </select>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                        {timeline.map((item, tIdx) => {
+                          const isGoal = item.kind === 'goal';
+                          const teamMembers = members
+                            .filter(m => m.teamId === item.teamId)
+                            .sort((a, b) => Number(a.number) - Number(b.number));
 
-                        <select 
-                          value={goal.scorerId || ''} 
-                          onChange={e => updateGoalDetail(goal.id, 'scorerId', e.target.value)}
-                          className="edit-input"
-                          style={{padding: '4px 6px', fontSize: '0.8rem', flex: 1}}
-                        >
-                          <option value="">得点者: 未設定</option>
-                          <option value="own_goal">オウンゴール</option>
-                          {teamMembers.map(m => (
-                            <option key={m.id} value={m.id}>{m.number ? `[${m.number}] ` : ''}{m.name}</option>
-                          ))}
-                        </select>
+                          return (
+                            <div 
+                              key={item.id} 
+                              style={{
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 6, 
+                                background: isGoal 
+                                  ? 'var(--item-sub-bg)' 
+                                  : item.type === 'red' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)',
+                                border: `1px solid ${isGoal 
+                                  ? 'var(--border-subtle)' 
+                                  : item.type === 'red' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                                padding: '8px 10px', 
+                                borderRadius: 8, 
+                                fontSize: '0.85rem', 
+                                flexWrap: 'wrap'
+                              }}
+                            >
+                              {/* Order & Reorder arrows */}
+                              <div style={{display: 'flex', alignItems: 'center', gap: 2, marginRight: 2}}>
+                                <span style={{
+                                  fontSize: '0.75rem', 
+                                  fontWeight: 'bold', 
+                                  color: 'var(--text-muted)',
+                                  minWidth: '18px',
+                                  textAlign: 'center'
+                                }}>
+                                  #{tIdx + 1}
+                                </span>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: 1}}>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveTimelineItem(tIdx, -1)}
+                                    disabled={tIdx === 0}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: tIdx === 0 ? 'var(--border-subtle)' : 'var(--text-secondary)',
+                                      cursor: tIdx === 0 ? 'default' : 'pointer',
+                                      fontSize: '9px',
+                                      lineHeight: '9px',
+                                      padding: '1px 3px'
+                                    }}
+                                    title="時系列を前へ移動"
+                                  >
+                                    ▲
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveTimelineItem(tIdx, 1)}
+                                    disabled={tIdx === timeline.length - 1}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: tIdx === timeline.length - 1 ? 'var(--border-subtle)' : 'var(--text-secondary)',
+                                      cursor: tIdx === timeline.length - 1 ? 'default' : 'pointer',
+                                      fontSize: '9px',
+                                      lineHeight: '9px',
+                                      padding: '1px 3px'
+                                    }}
+                                    title="時系列を後ろへ移動"
+                                  >
+                                    ▼
+                                  </button>
+                                </div>
+                              </div>
 
-                        <select 
-                          value={goal.assistId || ''} 
-                          onChange={e => updateGoalDetail(goal.id, 'assistId', e.target.value)}
-                          className="edit-input"
-                          style={{padding: '4px 6px', fontSize: '0.8rem', flex: 1}}
-                        >
-                          <option value="">アシスト: なし</option>
-                          {teamMembers.filter(m => m.id !== goal.scorerId).map(m => (
-                            <option key={m.id} value={m.id}>{m.number ? `[${m.number}] ` : ''}{m.name}</option>
-                          ))}
-                        </select>
+                              {/* If Goal */}
+                              {isGoal ? (
+                                <>
+                                  <span style={{fontSize: '0.9rem'}}>⚽</span>
+                                  {/* Team Selector */}
+                                  <select
+                                    value={item.teamId}
+                                    onChange={e => updateGoalTeam(item.id, e.target.value)}
+                                    className="edit-input"
+                                    style={{padding: '4px 6px', fontSize: '0.8rem', minWidth: '95px'}}
+                                  >
+                                    {homeTeam && <option value={homeTeam.id}>{homeTeam.emoji} {homeTeam.name}</option>}
+                                    {awayTeam && <option value={awayTeam.id}>{awayTeam.emoji} {awayTeam.name}</option>}
+                                  </select>
 
-                        <button onClick={() => removeGoal(goal.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 2}}>
-                          <X size={16} />
-                        </button>
+                                  <select 
+                                    value={item.type || 'normal'} 
+                                    onChange={e => updateGoalDetail(item.id, 'type', e.target.value)}
+                                    className="edit-input"
+                                    style={{padding: '4px 6px', fontSize: '0.8rem', width: '56px'}}
+                                  >
+                                    <option value="normal">流れ</option>
+                                    <option value="pk">PK</option>
+                                    <option value="fk">FK</option>
+                                  </select>
+
+                                  <select 
+                                    value={item.scorerId || ''} 
+                                    onChange={e => updateGoalDetail(item.id, 'scorerId', e.target.value)}
+                                    className="edit-input"
+                                    style={{padding: '4px 6px', fontSize: '0.8rem', flex: '1 1 115px'}}
+                                  >
+                                    <option value="">得点者: 未設定</option>
+                                    <option value="own_goal">オウンゴール</option>
+                                    {teamMembers.map(m => (
+                                      <option key={m.id} value={m.id}>{m.number ? `[${m.number}] ` : ''}{m.name}</option>
+                                    ))}
+                                  </select>
+
+                                  <select 
+                                    value={item.assistId || ''} 
+                                    onChange={e => updateGoalDetail(item.id, 'assistId', e.target.value)}
+                                    className="edit-input"
+                                    style={{padding: '4px 6px', fontSize: '0.8rem', flex: '1 1 115px'}}
+                                  >
+                                    <option value="">アシスト: なし</option>
+                                    {teamMembers.filter(m => m.id !== item.scorerId).map(m => (
+                                      <option key={m.id} value={m.id}>{m.number ? `[${m.number}] ` : ''}{m.name}</option>
+                                    ))}
+                                  </select>
+
+                                  {/* Delete button */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); removeGoal(item.id, item.origIdx); }}
+                                    style={{
+                                      background: 'rgba(239, 68, 68, 0.15)',
+                                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                                      color: 'var(--danger)',
+                                      borderRadius: 6,
+                                      width: 30,
+                                      height: 30,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: 'pointer',
+                                      flexShrink: 0,
+                                      marginLeft: 'auto'
+                                    }}
+                                    title="得点を削除"
+                                    aria-label="得点を削除"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                </>
+                              ) : (
+                                /* If Card */
+                                <>
+                                  {/* Card type selector */}
+                                  <select
+                                    value={item.type || 'yellow'}
+                                    onChange={e => updateCardDetail(item.id, 'type', e.target.value)}
+                                    className="edit-input"
+                                    style={{padding: '4px 6px', fontSize: '0.8rem', width: '92px'}}
+                                  >
+                                    <option value="yellow">🟨 イエロー</option>
+                                    <option value="red">🟥 レッド</option>
+                                  </select>
+
+                                  {/* Team selector */}
+                                  <select
+                                    value={item.teamId}
+                                    onChange={e => updateCardDetail(item.id, 'teamId', e.target.value)}
+                                    className="edit-input"
+                                    style={{padding: '4px 6px', fontSize: '0.8rem', minWidth: '95px'}}
+                                  >
+                                    {homeTeam && <option value={homeTeam.id}>{homeTeam.emoji} {homeTeam.name}</option>}
+                                    {awayTeam && <option value={awayTeam.id}>{awayTeam.emoji} {awayTeam.name}</option>}
+                                  </select>
+
+                                  {/* Player selector */}
+                                  <select
+                                    value={item.playerId || ''}
+                                    onChange={e => updateCardDetail(item.id, 'playerId', e.target.value)}
+                                    className="edit-input"
+                                    style={{padding: '4px 6px', fontSize: '0.8rem', flex: '1 1 130px'}}
+                                  >
+                                    <option value="">対象選手を選択</option>
+                                    {teamMembers.map(m => (
+                                      <option key={m.id} value={m.id}>
+                                        {m.number ? `[${m.number}] ` : ''}{m.name}
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                  {/* Delete button */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); removeCard(item.id, item.origIdx); }}
+                                    style={{
+                                      background: 'rgba(239, 68, 68, 0.15)',
+                                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                                      color: 'var(--danger)',
+                                      borderRadius: 6,
+                                      width: 30,
+                                      height: 30,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: 'pointer',
+                                      flexShrink: 0,
+                                      marginLeft: 'auto'
+                                    }}
+                                    title="カードを削除"
+                                    aria-label="カードを削除"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
-                  })}
-                  {selectedMatch.goals.length === 0 && (
-                    <p style={{color: 'var(--text-secondary)', textAlign: 'center', fontSize: '0.8rem'}}>得点データはありません</p>
-                  )}
+                  })()}
                 </div>
-              </div>
 
-              {/* Referee Selection */}
-              <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
-                <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>審判の設定</h4>
-                
-                <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
-                    <span style={{fontSize: '0.9rem'}}>担当チーム:</span>
-                    <select 
-                      value={selectedMatch.refereeTeamId || ''} 
-                      onChange={e => updateMatchRefereeTeam(e.target.value)}
-                      className="edit-input"
-                      style={{flex: 1, maxWidth: '180px'}}
-                    >
-                      <option value="">設定なし</option>
-                      {teams.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {selectedMatch.refereeTeamId && (
+                {/* Referee Selection */}
+                <div className="glass-card" style={{padding: '16px', marginBottom: 24, cursor: 'default'}}>
+                  <h4 style={{marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-secondary)'}}>審判の設定</h4>
+                  
+                  <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
-                      <span style={{fontSize: '0.9rem'}}>主審（個人）:</span>
+                      <span style={{fontSize: '0.9rem'}}>担当チーム:</span>
                       <select 
-                        value={selectedMatch.refereePlayerId || ''} 
-                        onChange={e => updateMatchReferee(e.target.value)}
+                        value={selectedMatch.refereeTeamId || ''} 
+                        onChange={e => updateMatchRefereeTeam(e.target.value)}
                         className="edit-input"
                         style={{flex: 1, maxWidth: '180px'}}
                       >
-                        <option value="">未選択</option>
-                        {members
-                          .filter(m => m.teamId === selectedMatch.refereeTeamId)
-                          .sort((a, b) => Number(a.number) - Number(b.number))
-                          .map(m => (
-                            <option key={m.id} value={m.id}>
-                              {m.number ? `[${m.number}] ` : ''}{m.name}
-                            </option>
-                          ))}
+                        <option value="">設定なし</option>
+                        {teams.map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
                       </select>
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Action Buttons */}
-              {(() => {
-                const isRevertable = 
-                  selectedMatch.status === 'finished' && 
-                  (!selectedMatch.goals || selectedMatch.goals.length === 0) &&
-                  !selectedMatch.actualStartTime &&
-                  !selectedMatch.refereePlayerId;
-                
-                if (isRevertable) {
+                    {selectedMatch.refereeTeamId && (
+                      <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
+                        <span style={{fontSize: '0.9rem'}}>主審（個人）:</span>
+                        <select 
+                          value={selectedMatch.refereePlayerId || ''} 
+                          onChange={e => updateMatchReferee(e.target.value)}
+                          className="edit-input"
+                          style={{flex: 1, maxWidth: '180px'}}
+                        >
+                          <option value="">未選択</option>
+                          {members
+                            .filter(m => m.teamId === selectedMatch.refereeTeamId)
+                            .sort((a, b) => Number(a.number) - Number(b.number))
+                            .map(m => (
+                              <option key={m.id} value={m.id}>
+                                {m.number ? `[${m.number}] ` : ''}{m.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sticky Action Footer */}
+                {(() => {
+                  const isRevertable = 
+                    selectedMatch.status === 'finished' && 
+                    (!selectedMatch.goals || selectedMatch.goals.length === 0) &&
+                    (!selectedMatch.cards || selectedMatch.cards.length === 0) &&
+                    !selectedMatch.actualStartTime &&
+                    !selectedMatch.refereePlayerId;
+                  
                   return (
-                    <button 
-                      className="btn btn-secondary" 
-                      onClick={() => {
-                        // Reset scores before saving as scheduled
-                        selectedMatch.homeScore = 0;
-                        selectedMatch.awayScore = 0;
-                        saveMatch('scheduled');
-                      }} 
-                      style={{color: '#ff9800', borderColor: '#ff9800'}}
-                    >
-                      開始前に戻す
-                    </button>
+                    <div className="modal-sticky-footer">
+                      <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: '0.82rem'}}>
+                        {hasUnsavedChanges ? (
+                          <div style={{display: 'flex', alignItems: 'center', gap: 6, color: '#f59e0b', fontWeight: 'bold'}}>
+                            <span className="unsaved-pulse-dot"></span>
+                            未保存の変更があります
+                          </div>
+                        ) : (
+                          <div style={{display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)'}}>
+                            <Check size={14} color="#10b981" /> 最新の状態です
+                          </div>
+                        )}
+                        <div style={{fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 'bold'}}>
+                          {homeTeam?.name || 'Home'} {selectedMatch.homeScore} - {selectedMatch.awayScore} {awayTeam?.name || 'Away'}
+                        </div>
+                      </div>
+
+                      <div style={{display: 'flex', gap: 8}}>
+                        {isRevertable && (
+                          <button 
+                            type="button"
+                            className="btn btn-secondary" 
+                            onClick={() => {
+                              selectedMatch.homeScore = 0;
+                              selectedMatch.awayScore = 0;
+                              saveMatch('scheduled');
+                            }} 
+                            style={{color: '#ff9800', borderColor: '#ff9800', flex: 1, padding: '12px', fontSize: '0.95rem'}}
+                          >
+                            開始前に戻す
+                          </button>
+                        )}
+                        <button 
+                          type="button"
+                          className={`btn btn-primary ${hasUnsavedChanges ? 'btn-save-pulse' : ''}`}
+                          onClick={() => saveMatch('finished')}
+                          style={{
+                            flex: 2,
+                            padding: '12px',
+                            fontSize: '1rem',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8
+                          }}
+                        >
+                          <Save size={18} />
+                          {hasUnsavedChanges ? '💾 結果を保存する' : '保存完了 (上書き保存)'}
+                        </button>
+                      </div>
+                    </div>
                   );
-                }
-                return (
-                  <button className="btn btn-primary" onClick={() => saveMatch('finished')}>
-                    保存
-                  </button>
-                );
-              })()}
-            </>
-          )}
+                })()}
+              </>
+            );
+          })()}
         </div>
       </div>
+
+      {/* Unsaved Changes Confirmation Dialog */}
+      {showDiscardConfirm && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 300,
+            padding: 20
+          }}
+          onClick={(e) => { e.stopPropagation(); setShowDiscardConfirm(false); }}
+        >
+          <div 
+            className="glass-card" 
+            style={{
+              maxWidth: 380,
+              width: '100%',
+              padding: 24,
+              borderRadius: 20,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: '0 12px 36px rgba(0,0,0,0.4)',
+              textAlign: 'center'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{fontSize: '2.5rem', marginBottom: 12}}>⚠️</div>
+            <h3 style={{fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: 8, fontWeight: 'bold'}}>
+              保存されていない変更があります
+            </h3>
+            <p style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.5}}>
+              スコアや試合情報の変更がまだ保存されていません。<br />このまま閉じると変更内容が失われます。
+            </p>
+            <div style={{display: 'flex', flexDirection: 'column', gap: 10}}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{
+                  padding: '12px', fontWeight: 'bold', fontSize: '0.95rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                }}
+                onClick={() => {
+                  setShowDiscardConfirm(false);
+                  saveMatch('finished');
+                }}
+              >
+                <Save size={16} /> 💾 保存して閉じる
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  padding: '10px',
+                  fontSize: '0.9rem',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: 'var(--danger)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                }}
+                onClick={() => {
+                  setShowDiscardConfirm(false);
+                  forceCloseModal();
+                }}
+              >
+                <Trash2 size={15} /> 🗑️ 変更を破棄して閉じる
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{padding: '8px', fontSize: '0.85rem'}}
+                onClick={() => setShowDiscardConfirm(false)}
+              >
+                編集を続ける
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -925,7 +1562,22 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
             </tr>
             <tr>
               <th>備考</th>
-              <td colSpan="3"></td>
+              <td colSpan="3" style={{fontSize: '7.5pt', verticalAlign: 'middle', padding: '1mm 2mm'}}>
+                {match.cards && match.cards.length > 0 ? (
+                  <div style={{display: 'flex', flexWrap: 'wrap', gap: '3mm'}}>
+                    {match.cards.map((c, i) => {
+                      const cTeam = getTeam(c.teamId);
+                      const cPlayer = getPlayer(c.playerId);
+                      const cardBadge = c.type === 'yellow' ? '🟨' : '🟥';
+                      return (
+                        <span key={c.id || i}>
+                          {cardBadge} {cTeam ? `[${cTeam.name}] ` : ''}{cPlayer ? `${cPlayer.name}(#${cPlayer.number})` : '未設定'}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : ''}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -1162,10 +1814,11 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
             <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■予選で同順位の場合</h2>
             <div style={{paddingLeft: '8px', marginBottom: '12px'}}>
               <div>①勝ち点(勝ち3点、引分1点、負け0点)</div>
-              <div>②得失点</div>
-              <div>③直接対決の結果</div>
-              <div>④ファール数(イエロー：-5、レッド：-10)</div>
-              <div>⑤ジャンケン</div>
+              <div>②得失点差</div>
+              <div>③反則数(少ない順: 🟨1, 🟥2)</div>
+              <div>④総得点</div>
+              <div>⑤直接対決の結果</div>
+              <div>⑥ジャンケン</div>
               <div style={{color: '#666', fontSize: '9pt', marginTop: '4px'}}>※①から順番に判断する</div>
             </div>
           </div>
@@ -1223,7 +1876,7 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick, isAdmin }) {
                     top: 18,
                     bottom: -18,
                     width: 2,
-                    background: 'rgba(255,255,255,0.08)'
+                    background: 'var(--border-subtle)'
                   }}></div>
                 )}
                 {/* Dot */}
@@ -1231,7 +1884,7 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick, isAdmin }) {
                   width: 14,
                   height: 14,
                   borderRadius: '50%',
-                  background: event.label.includes('試合') || event.label.includes('決勝') ? 'var(--accent-color)' : 'rgba(255,255,255,0.25)',
+                  background: event.label.includes('試合') || event.label.includes('決勝') ? 'var(--accent-color)' : 'var(--text-muted)',
                   border: '3px solid var(--bg-color)',
                   zIndex: 2,
                   marginTop: 3,
@@ -1245,7 +1898,7 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick, isAdmin }) {
                   </div>
                   {(event.duration || event.detail) && (
                     <div style={{fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center'}}>
-                      {event.duration && <span style={{background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: 4}}>{event.duration}</span>}
+                      {event.duration && <span style={{background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', color: 'var(--pill-text)', padding: '1px 5px', borderRadius: 4}}>{event.duration}</span>}
                       {event.detail && <span>{event.detail}</span>}
                     </div>
                   )}
@@ -1262,7 +1915,7 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick, isAdmin }) {
               <div style={{overflowX: 'auto'}}>
                 <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center'}}>
                   <thead>
-                    <tr style={{borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-secondary)'}}>
+                    <tr style={{borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)'}}>
                       <th style={{padding: '6px 8px', textAlign: 'left'}}>チーム</th>
                       <th style={{padding: '6px 8px'}}>試合数</th>
                       <th style={{padding: '6px 8px'}}>試合時間</th>
@@ -1272,7 +1925,7 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick, isAdmin }) {
                   </thead>
                   <tbody>
                     {teamSummary.map((ts, idx) => (
-                      <tr key={idx} style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
+                      <tr key={idx} style={{borderBottom: '1px solid var(--table-border)'}}>
                         <td style={{padding: '8px', textAlign: 'left', fontWeight: 'bold', color: 'var(--text-primary)'}}>{ts.team}</td>
                         <td style={{padding: '8px'}}>{ts.matches}</td>
                         <td style={{padding: '8px'}}>{ts.matchTime}</td>
@@ -1297,6 +1950,7 @@ function ScheduleView({ matches, getTeam, getPlayer, onMatchClick, isAdmin }) {
               refereeTeam={getTeam(match.refereeTeamId)}
               refereePlayer={getPlayer(match.refereePlayerId)}
               getPlayer={getPlayer}
+              getTeam={getTeam}
               onClick={() => onMatchClick(match)}
               style={{cursor: isAdmin ? 'pointer' : 'default', opacity: 1}}
             />
@@ -1319,22 +1973,13 @@ function calculateTimeDiff(scheduled, actual) {
   return { text: '(±0)', color: 'var(--text-secondary)' };
 }
 
-function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, getPlayer, onClick }) {
+function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, getPlayer, getTeam, onClick }) {
 
-  const getGoalsText = (teamId) => {
-    if (!match.goals) return '';
-    return match.goals
-      .filter(g => g.teamId === teamId && g.scorerId)
-      .map(g => {
-        const scorerName = g.scorerId === 'own_goal' ? 'オウンゴール' : getPlayer(g.scorerId)?.name;
-        const assist = g.assistId ? getPlayer(g.assistId) : null;
-        return `${scorerName}${assist ? `(A:${assist.name})` : ''}`;
-      })
-      .join(', ');
-  };
-
-  const homeGoalsText = getGoalsText(match.homeId);
-  const awayGoalsText = getGoalsText(match.awayId);
+  // Chronological timeline of goals and cards
+  const timelineEvents = [
+    ...(match.goals || []).filter(g => g.teamId && g.scorerId).map(g => ({ ...g, kind: 'goal' })),
+    ...(match.cards || []).filter(c => c.teamId && c.playerId).map(c => ({ ...c, kind: 'card' }))
+  ].sort((a, b) => (a.order || 0) - (b.order || 0));
 
   return (
     <div className="glass-card match-item" onClick={onClick}>
@@ -1378,21 +2023,43 @@ function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, getP
         </div>
       </div>
 
-      {/* Scorers display */}
-      {(homeGoalsText || awayGoalsText) && (
+      {/* Unified Chronological Events Timeline */}
+      {timelineEvents.length > 0 && (
         <div style={{
           marginTop: 4,
-          padding: '6px 8px',
-          background: 'rgba(255,255,255,0.03)',
+          padding: '6px 10px',
+          background: 'var(--item-sub-bg)',
+          border: '1px solid var(--border-subtle)',
           borderRadius: 6,
           fontSize: '0.75rem',
           color: 'var(--text-secondary)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 2
+          gap: 3
         }}>
-          {homeGoalsText && <div>⚽ {homeTeam?.name}: {homeGoalsText}</div>}
-          {awayGoalsText && <div>⚽ {awayTeam?.name}: {awayGoalsText}</div>}
+          {timelineEvents.map((ev, idx) => {
+            const team = ev.teamId === match.homeId ? homeTeam : ev.teamId === match.awayId ? awayTeam : (getTeam ? getTeam(ev.teamId) : null);
+            if (ev.kind === 'goal') {
+              const scorerName = ev.scorerId === 'own_goal' ? 'オウンゴール' : getPlayer(ev.scorerId)?.name;
+              const assist = ev.assistId ? getPlayer(ev.assistId) : null;
+              const typeStr = ev.type === 'pk' ? ' (PK)' : ev.type === 'fk' ? ' (FK)' : '';
+              return (
+                <div key={ev.id || `g_${idx}`} style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                  <span style={{color: 'var(--text-muted)', fontSize: '0.7rem', minWidth: '14px'}}>#{idx + 1}</span>
+                  <span>⚽ [{team?.name || '未定'}] {scorerName}{typeStr}{assist ? ` (A:${assist.name})` : ''}</span>
+                </div>
+              );
+            } else {
+              const p = getPlayer(ev.playerId);
+              const cardBadge = ev.type === 'yellow' ? '🟨' : '🟥';
+              return (
+                <div key={ev.id || `c_${idx}`} style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                  <span style={{color: 'var(--text-muted)', fontSize: '0.7rem', minWidth: '14px'}}>#{idx + 1}</span>
+                  <span>{cardBadge} [{team?.name || '未定'}] {p ? p.name : '選手'}</span>
+                </div>
+              );
+            }
+          })}
         </div>
       )}
 
@@ -1400,7 +2067,7 @@ function MatchCard({ match, homeTeam, awayTeam, refereeTeam, refereePlayer, getP
       <div style={{
         marginTop: 4, 
         paddingTop: 8, 
-        borderTop: '1px solid rgba(255,255,255,0.05)', 
+        borderTop: '1px solid var(--border-subtle)', 
         fontSize: '0.75rem', 
         color: 'var(--text-secondary)',
         display: 'flex',
@@ -1427,12 +2094,21 @@ function StandingsView({ standings, matches, members, getTeam }) {
       if (m.goals) {
         m.goals.forEach(g => {
           if (g.scorerId && g.scorerId !== 'own_goal') {
-            if (!stats[g.scorerId]) stats[g.scorerId] = { goals: 0, assists: 0 };
+            if (!stats[g.scorerId]) stats[g.scorerId] = { goals: 0, assists: 0, yellowCards: 0, redCards: 0 };
             stats[g.scorerId].goals += 1;
           }
           if (g.assistId) {
-            if (!stats[g.assistId]) stats[g.assistId] = { goals: 0, assists: 0 };
+            if (!stats[g.assistId]) stats[g.assistId] = { goals: 0, assists: 0, yellowCards: 0, redCards: 0 };
             stats[g.assistId].assists += 1;
+          }
+        });
+      }
+      if (m.cards) {
+        m.cards.forEach(c => {
+          if (c.playerId) {
+            if (!stats[c.playerId]) stats[c.playerId] = { goals: 0, assists: 0, yellowCards: 0, redCards: 0 };
+            if (c.type === 'yellow') stats[c.playerId].yellowCards += 1;
+            if (c.type === 'red') stats[c.playerId].redCards += 1;
           }
         });
       }
@@ -1441,6 +2117,8 @@ function StandingsView({ standings, matches, members, getTeam }) {
     return Object.keys(stats).map(playerId => {
       const player = members.find(m => m.id === playerId);
       const team = player ? getTeam(player.teamId) : null;
+      const s = stats[playerId];
+      const foulPoints = (s.yellowCards * 1) + (s.redCards * 2);
       return {
         id: playerId,
         name: player ? player.name : '不明',
@@ -1448,8 +2126,11 @@ function StandingsView({ standings, matches, members, getTeam }) {
         teamId: player ? player.teamId : '',
         teamName: team ? team.name : '',
         teamEmoji: team ? team.emoji : '',
-        goals: stats[playerId].goals,
-        assists: stats[playerId].assists
+        goals: s.goals || 0,
+        assists: s.assists || 0,
+        yellowCards: s.yellowCards || 0,
+        redCards: s.redCards || 0,
+        foulPoints
       };
     });
   };
@@ -1510,6 +2191,14 @@ function StandingsView({ standings, matches, members, getTeam }) {
   const personalList = getPersonalStats();
   const goalRankings = assignRanks([...personalList].filter(p => p.goals > 0).sort(rankSort('goals')), 'goals');
   const assistRankings = assignRanks([...personalList].filter(p => p.assists > 0).sort(rankSort('assists')), 'assists');
+  const cardRankings = [...personalList]
+    .filter(p => p.yellowCards > 0 || p.redCards > 0)
+    .sort((a, b) => {
+      if (b.foulPoints !== a.foulPoints) return b.foulPoints - a.foulPoints;
+      if (b.redCards !== a.redCards) return b.redCards - a.redCards;
+      if (b.yellowCards !== a.yellowCards) return b.yellowCards - a.yellowCards;
+      return (Number(a.number) || 9999) - (Number(b.number) || 9999);
+    });
 
   // Calculate final tournament rankings
   const finalMatch = matches.find(m => m.stage === 'final');
@@ -1520,7 +2209,7 @@ function StandingsView({ standings, matches, members, getTeam }) {
     if (finalMatch.homeScore > finalMatch.awayScore) {
       first = getTeam(finalMatch.homeId)?.name || '';
       second = getTeam(finalMatch.awayId)?.name || '';
-    } else if (finalMatch.homeScore < finalMatch.awayScore) {
+    } else if (finalMatch.awayScore > finalMatch.homeScore) {
       first = getTeam(finalMatch.awayId)?.name || '';
       second = getTeam(finalMatch.homeId)?.name || '';
     } else {
@@ -1548,27 +2237,20 @@ function StandingsView({ standings, matches, members, getTeam }) {
         <div className={`tab ${subTab === 'team' ? 'active' : ''}`} onClick={() => setSubTab('team')}>順位表</div>
         <div className={`tab ${subTab === 'goals' ? 'active' : ''}`} onClick={() => setSubTab('goals')}>得点王</div>
         <div className={`tab ${subTab === 'assists' ? 'active' : ''}`} onClick={() => setSubTab('assists')}>アシスト</div>
+        <div className={`tab ${subTab === 'cards' ? 'active' : ''}`} onClick={() => setSubTab('cards')}>カード・反則</div>
       </div>
 
       {subTab === 'team' && (
         <>
           {(first || second || third || fourth) && (
-            <div className="glass-card" style={{
-              padding: '24px 16px', 
-              marginBottom: '24px', 
-              textAlign: 'center', 
-              background: 'linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(0,0,0,0.4) 100%)',
-              border: '1px solid rgba(255,215,0,0.3)',
-              boxShadow: '0 8px 32px rgba(255,215,0,0.1)'
-            }}>
-              <h2 style={{marginTop: 0, marginBottom: 20, fontSize: '1.5rem', color: '#ffd700', textShadow: '0 2px 4px rgba(0,0,0,0.5)', letterSpacing: '2px'}}>🏆 最終順位 🏆</h2>
+            <div className="glass-card final-rankings-card">
+              <h2 className="final-rankings-title">🏆 最終順位 🏆</h2>
               <div style={{display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center'}}>
                 {first && (
-                  <div style={{
+                  <div className="final-rank-item rank-gold" style={{
                     fontSize: '1.8rem', 
                     fontWeight: '900', 
                     color: '#ffd700',
-                    background: 'rgba(0,0,0,0.3)',
                     padding: '12px 24px',
                     borderRadius: '12px',
                     width: '100%',
@@ -1580,11 +2262,10 @@ function StandingsView({ standings, matches, members, getTeam }) {
                   </div>
                 )}
                 {second && (
-                  <div style={{
+                  <div className="final-rank-item rank-silver" style={{
                     fontSize: '1.4rem', 
                     fontWeight: 'bold', 
                     color: '#e0e0e0',
-                    background: 'rgba(0,0,0,0.3)',
                     padding: '8px 24px',
                     borderRadius: '12px',
                     width: '100%',
@@ -1596,12 +2277,11 @@ function StandingsView({ standings, matches, members, getTeam }) {
                 )}
                 <div style={{display: 'flex', gap: 12, justifyContent: 'center', width: '100%', maxWidth: '400px'}}>
                   {third && (
-                    <div style={{
+                    <div className="final-rank-item rank-bronze" style={{
                       flex: 1,
                       fontSize: '1.1rem', 
                       fontWeight: 'bold', 
                       color: '#cd7f32',
-                      background: 'rgba(0,0,0,0.3)',
                       padding: '8px 16px',
                       borderRadius: '12px',
                       border: '1px solid #cd7f32'
@@ -1610,15 +2290,14 @@ function StandingsView({ standings, matches, members, getTeam }) {
                     </div>
                   )}
                   {fourth && (
-                    <div style={{
+                    <div className="final-rank-item rank-fourth" style={{
                       flex: 1,
                       fontSize: '1.1rem', 
                       fontWeight: 'bold', 
                       color: 'var(--text-secondary)',
-                      background: 'rgba(0,0,0,0.3)',
                       padding: '8px 16px',
                       borderRadius: '12px',
-                      border: '1px solid rgba(255,255,255,0.1)'
+                      border: '1px solid var(--border-subtle)'
                     }}>
                       4位: {fourth}
                     </div>
@@ -1639,6 +2318,7 @@ function StandingsView({ standings, matches, members, getTeam }) {
                 <th>負</th>
                 <th>差</th>
                 <th>点</th>
+                <th>反則</th>
               </tr>
             </thead>
             <tbody>
@@ -1654,10 +2334,25 @@ function StandingsView({ standings, matches, members, getTeam }) {
                   <td>{team.lost}</td>
                   <td>{team.goalDifference > 0 ? `+${team.goalDifference}` : team.goalDifference}</td>
                   <td style={{fontWeight: 'bold', color: 'var(--accent-color)'}}>{team.points}</td>
+                  <td style={{fontSize: '0.82rem', whiteSpace: 'nowrap'}}>
+                    {team.foulPoints > 0 ? (
+                      <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>
+                        <span style={{fontWeight: 'bold', color: 'var(--text-primary)'}}>{team.foulPoints}</span>
+                        <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>
+                          ({team.yellowCards > 0 && `🟨${team.yellowCards}`}{team.yellowCards > 0 && team.redCards > 0 ? ' ' : ''}{team.redCards > 0 && `🟥${team.redCards}`})
+                        </span>
+                      </span>
+                    ) : (
+                      <span style={{color: 'var(--text-secondary)'}}>0</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+        <div style={{marginTop: 8, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.4}}>
+          ※順位決定基準: ①勝点 ②得失点差 ③反則数(少ない順: 🟨1, 🟥2) ④総得点 ⑤直接対決 ⑥ジャンケン
         </div>
         </>
       )}
@@ -1722,6 +2417,51 @@ function StandingsView({ standings, matches, members, getTeam }) {
               {assistRankings.length === 0 && (
                 <tr>
                   <td colSpan="3" style={{color: 'var(--text-secondary)', padding: '20px 0'}}>アシストデータがありません</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        </>
+      )}
+
+      {subTab === 'cards' && (
+        <>
+        <div style={{marginBottom: 8, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
+          ※全試合のカード累積記録（反則数: 🟨イエロー 1, 🟥レッド 2）
+        </div>
+        <div className="table-container">
+          <table className="standings-table">
+            <thead>
+              <tr>
+                <th style={{paddingLeft: '16px'}}>選手</th>
+                <th>クラブ</th>
+                <th>🟨 イエロー</th>
+                <th>🟥 レッド</th>
+                <th style={{paddingRight: '16px'}}>反則数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cardRankings.map((player) => (
+                <tr key={player.id}>
+                  <td style={{paddingLeft: '16px', textAlign: 'left'}}>
+                    {player.number ? `[${player.number}] ` : ''}{player.name}
+                  </td>
+                  <td>{player.teamEmoji} {player.teamName}</td>
+                  <td style={{fontWeight: player.yellowCards > 0 ? 'bold' : 'normal', color: player.yellowCards > 0 ? '#ffb300' : 'var(--text-secondary)'}}>
+                    {player.yellowCards}
+                  </td>
+                  <td style={{fontWeight: player.redCards > 0 ? 'bold' : 'normal', color: player.redCards > 0 ? 'var(--danger)' : 'var(--text-secondary)'}}>
+                    {player.redCards}
+                  </td>
+                  <td style={{fontWeight: 'bold', color: 'var(--danger)', paddingRight: '16px'}}>
+                    {player.foulPoints}
+                  </td>
+                </tr>
+              ))}
+              {cardRankings.length === 0 && (
+                <tr>
+                  <td colSpan="5" style={{color: 'var(--text-secondary)', padding: '20px 0'}}>カードの記録はありません</td>
                 </tr>
               )}
             </tbody>
@@ -1810,7 +2550,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
             key={team.id}
             className={`tab ${selectedTeam === team.id ? 'active' : ''}`}
             onClick={() => setSelectedTeam(team.id)}
-            style={{flex: '0 0 auto', padding: '8px 16px', background: selectedTeam === team.id ? 'var(--accent-color)' : 'rgba(0,0,0,0.2)'}}
+            style={{flex: '0 0 auto', padding: '8px 16px', background: selectedTeam === team.id ? 'var(--accent-color)' : 'var(--tabs-bg)', border: selectedTeam === team.id ? '1px solid transparent' : '1px solid var(--glass-border)', color: selectedTeam === team.id ? '#ffffff' : 'var(--text-secondary)'}}
           >
             {team.emoji} {team.name}
           </div>
@@ -1832,13 +2572,12 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                 style={{
                   padding: '8px 14px',
                   borderRadius: 8,
-                  border: 'none',
                   cursor: 'pointer',
                   fontWeight: 'bold',
                   fontSize: '0.85rem',
-                  background: deleteMode ? 'transparent' : 'rgba(255,255,255,0.1)',
-                  border: deleteMode ? '1px solid rgba(255,255,255,0.2)' : 'none',
-                  color: deleteMode ? 'var(--text-secondary)' : 'var(--text-secondary)',
+                  background: deleteMode ? 'transparent' : 'var(--pill-bg)',
+                  border: deleteMode ? '1px solid var(--border-subtle)' : '1px solid var(--glass-border)',
+                  color: 'var(--text-secondary)',
                   transition: 'all 0.2s',
                   display: 'flex', alignItems: 'center', gap: 4
                 }}
@@ -1860,11 +2599,11 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                     style={{
                       padding: '8px 14px',
                       borderRadius: 8,
-                      border: '1px solid rgba(255,255,255,0.2)',
+                      border: '1px solid var(--glass-border)',
                       cursor: 'pointer',
                       fontWeight: 'bold',
                       fontSize: '0.85rem',
-                      background: 'transparent',
+                      background: 'var(--glass-bg)',
                       color: 'var(--text-secondary)'
                     }}
                   >
@@ -1887,12 +2626,12 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                     width: 'auto',
                     marginBottom: 0,
                     borderRadius: 8,
-                    border: 'none',
+                    border: '1px solid var(--glass-border)',
                     cursor: 'pointer',
                     fontWeight: 'bold',
                     fontSize: '0.85rem',
-                    background: checkMode ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
-                    color: checkMode ? '#fff' : 'var(--text-secondary)',
+                    background: checkMode ? 'var(--accent-color)' : 'var(--pill-bg)',
+                    color: checkMode ? '#fff' : 'var(--text-primary)',
                     transition: 'all 0.2s'
                   }}
                 >
@@ -1907,11 +2646,11 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                   style={{
                     padding: '8px 14px',
                     borderRadius: 8,
-                    border: '1px solid rgba(255,255,255,0.2)',
+                    border: '1px solid var(--glass-border)',
                     cursor: 'pointer',
                     fontWeight: 'bold',
                     fontSize: '0.85rem',
-                    background: 'transparent',
+                    background: 'var(--glass-bg)',
                     color: 'var(--text-secondary)',
                     display: 'flex', alignItems: 'center', gap: 4
                   }}
@@ -1943,7 +2682,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
               {checkedCount} / {teamMembers.length} 名
             </span>
           </div>
-          <div style={{background: 'rgba(255,255,255,0.1)', borderRadius: 99, height: 8, overflow: 'hidden'}}>
+          <div style={{background: 'var(--border-subtle)', borderRadius: 99, height: 8, overflow: 'hidden'}}>
             <div style={{
               background: checkedCount === teamMembers.length && teamMembers.length > 0 ? '#4caf50' : 'var(--accent-color)',
               height: '100%',
@@ -1965,11 +2704,11 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                 display: 'flex',
                 alignItems: 'center',
                 background: checkMode && member.checked
-                  ? 'rgba(76, 175, 80, 0.2)'
-                  : 'rgba(0,0,0,0.2)',
+                  ? 'var(--checked-bg)'
+                  : 'var(--item-sub-bg)',
                 border: checkMode && member.checked
-                  ? '1px solid rgba(76, 175, 80, 0.5)'
-                  : '1px solid transparent',
+                  ? '1px solid var(--checked-border)'
+                  : '1px solid var(--border-subtle)',
                 padding: '12px 16px',
                 borderRadius: 8,
                 transition: 'all 0.2s',
@@ -1982,8 +2721,8 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                 <div style={{
                   width: 28, height: 28,
                   borderRadius: '50%',
-                  border: `2px solid ${member.checked ? '#4caf50' : 'rgba(255,255,255,0.3)'}`,
-                  background: member.checked ? '#4caf50' : 'transparent',
+                  border: `2px solid ${member.checked ? 'var(--accent-color)' : 'var(--border-subtle)'}`,
+                  background: member.checked ? 'var(--accent-color)' : 'transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   marginRight: 12, flexShrink: 0,
                   transition: 'all 0.2s'
@@ -2049,11 +2788,11 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                   <div style={{
                     flex: 1,
                     fontWeight: checkMode && member.checked ? 'bold' : 'normal',
-                    color: checkMode && member.checked ? '#fff' : 'inherit'
+                    color: checkMode && member.checked ? 'var(--checked-text)' : 'inherit'
                   }}>
                     {member.name}
                     {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
-                    {!checkMode && member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>{member.referee}</span>}
+                    {!checkMode && member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', padding: '2px 6px', borderRadius: 4, color: 'var(--pill-text)'}}>{member.referee}</span>}
                     {!checkMode && (member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                   </div>
                   {!checkMode && (
@@ -2062,12 +2801,12 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       {member.checked && (
                         <div style={{
                           display: 'flex', alignItems: 'center', gap: 3,
-                          background: 'rgba(76,175,80,0.2)',
-                          border: '1px solid rgba(76,175,80,0.5)',
+                          background: 'var(--checked-bg)',
+                          border: '1px solid var(--checked-border)',
                           borderRadius: 99,
                           padding: '2px 8px',
                           fontSize: '0.72rem',
-                          color: '#4caf50',
+                          color: 'var(--checked-text)',
                           fontWeight: 'bold',
                           flexShrink: 0
                         }}>
@@ -2104,8 +2843,8 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
               marginTop: 16,
               width: '100%',
               padding: '10px',
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.15)',
+              background: 'var(--glass-bg)',
+              border: '1px solid var(--glass-border)',
               borderRadius: 8,
               color: 'var(--text-secondary)',
               cursor: 'pointer',
@@ -2130,14 +2869,14 @@ function RulesView({ handlePrint, setActiveTab }) {
             <button
               onClick={() => setActiveTab('schedule')}
               style={{
-                background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-primary)',
+                background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)',
                 padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem'
               }}
             >
               ← 戻る
             </button>
           )}
-          <h2 style={{margin: 0}}>大会ルール</h2>
+          <h2 style={{margin: 0, color: 'var(--text-primary)'}}>大会ルール</h2>
         </div>
         <button
           onClick={() => handlePrint('rules')}
@@ -2156,7 +2895,7 @@ function RulesView({ handlePrint, setActiveTab }) {
       </div>
 
       <div style={{fontSize: '0.95rem', lineHeight: '1.8', color: 'var(--text-primary)'}}>
-        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■基本情報</h3>
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■基本情報</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
           <li>・形式：8人制(8対8)</li>
           <li>・交代：自由交代制</li>
@@ -2164,7 +2903,7 @@ function RulesView({ handlePrint, setActiveTab }) {
           <li>・ルール：通常のサッカーに準拠(オフサイドあり)</li>
         </ul>
 
-        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■ルール概要(通常サッカーとの差異)</h3>
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■ルール概要(通常サッカーとの差異)</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
           <li>・フリーキック時は、壁の人数に関わらず攻撃側は壁から1m離れる(キック時に離れていなければファールとして笛を吹く)</li>
           <li>・フリーキック時の距離は7m</li>
@@ -2177,13 +2916,13 @@ function RulesView({ handlePrint, setActiveTab }) {
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>⑤暴言、遅延行為</li>
         </ul>
 
-        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■試合開始前</h3>
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■試合開始前</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
           <li>・審判、相手をリスペクトするため、全員と握手してから試合を開始する</li>
           <li>・各チーム1つ試合球を出し、4つで大会を運営する</li>
         </ul>
 
-        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■選手交代(流れ)</h3>
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■選手交代(流れ)</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
           <li>・入場選手は四審に交代を宣告</li>
           <li>・退場選手への呼びかけは、審判でなくチームで行う</li>
@@ -2191,14 +2930,14 @@ function RulesView({ handlePrint, setActiveTab }) {
           <li>・入場選手は交代エリアより入場する</li>
         </ul>
 
-        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■選手交代(注意点)</h3>
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■選手交代(注意点)</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
           <li>・交代は試合を止めずに交代する</li>
           <li>・交代者INは交代者OUTがコートから出てからコートへ入ること</li>
           <li>・ゲーム中のキーパーの交代はなし(怪我の場合は除く)</li>
         </ul>
 
-        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■審判体制（資格不問）</h3>
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■審判体制（資格不問）</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
           <li>・主審 1名</li>
           <li>・副審 2名</li>
@@ -2206,7 +2945,7 @@ function RulesView({ handlePrint, setActiveTab }) {
           <li>・ＢＰ 2～3名</li>
         </ul>
 
-        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■四審の役割</h3>
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■四審の役割</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
           <li>・得点、アシスト、警告、退場、試合結果　※交代者のメモは不要</li>
           <li>・交代のOUTとINの管理</li>
@@ -2214,18 +2953,19 @@ function RulesView({ handlePrint, setActiveTab }) {
           <li>・本部側でのボールだし</li>
         </ul>
 
-        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■試合終了後</h3>
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■試合終了後</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
           <li>・代表者は本部にて試合結果をチェック(得点、アシスト、警告、退場)</li>
         </ul>
 
-        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■予選で同順位の場合</h3>
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■予選で同順位の場合</h3>
         <div style={{paddingLeft: 0, marginBottom: 24}}>
           <div>①勝ち点(勝ち3点、引分1点、負け0点)</div>
-          <div>②得失点</div>
-          <div>③直接対決の結果</div>
-          <div>④ファール数(イエロー：-5、レッド：-10)</div>
-          <div>⑤ジャンケン</div>
+          <div>②得失点差</div>
+          <div>③反則数(少ない順: 🟨1, 🟥2)</div>
+          <div>④総得点</div>
+          <div>⑤直接対決の結果</div>
+          <div>⑥ジャンケン</div>
           <div style={{color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 8}}>※①から順番に判断する</div>
         </div>
       </div>
