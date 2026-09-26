@@ -1868,6 +1868,19 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
               <li style={{paddingLeft: '12px'}}>⑤暴言、遅延行為</li>
             </ul>
 
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■間違いやすいルール</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・ゴールキックでは、オフサイドはなし</li>
+            </ul>
+
+            <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■秒数制限</h2>
+            <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
+              <li>・GKがペナルティーエリア内でボールを手で保持できる秒数は8秒</li>
+              <li style={{paddingLeft: '12px', color: '#666'}}>※反則時：相手コーナーキック</li>
+              <li>・ゴールキック、スローインで、遅延行為があった場合、5秒カウントする</li>
+              <li style={{paddingLeft: '12px', color: '#666'}}>※反則時：ゴールキック→相手コーナーキック、スローイン→相手スローイン</li>
+            </ul>
+
             <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■試合開始前</h2>
             <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
               <li>・審判、相手をリスペクトするため、全員と握手してから試合を開始する</li>
@@ -3428,6 +3441,19 @@ function RulesView({ handlePrint, setActiveTab }) {
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>③相手が激しく倒れるくらいのショルダーチャージは後ろからでなくてもファールとする</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>④キーパーへの激しい接触</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>⑤暴言、遅延行為</li>
+        </ul>
+
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■間違いやすいルール</h3>
+        <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
+          <li>・ゴールキックでは、オフサイドはなし</li>
+        </ul>
+
+        <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■秒数制限</h3>
+        <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
+          <li>・GKがペナルティーエリア内でボールを手で保持できる秒数は8秒</li>
+          <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>※反則時：相手コーナーキック</li>
+          <li>・ゴールキック、スローインで、遅延行為があった場合、5秒カウントする</li>
+          <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>※反則時：ゴールキック→相手コーナーキック、スローイン→相手スローイン</li>
         </ul>
 
         <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■試合開始前</h3>
