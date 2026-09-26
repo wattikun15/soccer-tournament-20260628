@@ -1860,7 +1860,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
               <li>・フリーキック時の距離は7m離れる</li>
               <li>・スローイン時の距離は2m離れる</li>
               <li>・キックオフシュートは禁止</li>
-              <li>・禁止事項(イエローまたは、レッドカードを提示する)</li>
+              <li>・禁止事項(🟨(軽度)、 🟥(重度)の提示)</li>
               <li style={{paddingLeft: '12px'}}>①スライディングでの接触(キーパーを含む)</li>
               <li style={{paddingLeft: '12px'}}>②後ろからの接触</li>
               <li style={{paddingLeft: '12px'}}>③相手が激しく倒れるくらいのショルダーチャージは後ろからでなくてもファールとする</li>
@@ -3435,7 +3435,7 @@ function RulesView({ handlePrint, setActiveTab }) {
           <li>・フリーキック時の距離は7m離れる</li>
           <li>・スローイン時の距離は2m離れる</li>
           <li>・キックオフシュートは禁止</li>
-          <li>・禁止事項(イエローまたは、レッドカードを提示する)</li>
+          <li>・禁止事項(🟨(軽度)、 🟥(重度)の提示)</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>①スライディングでの接触(キーパーを含む)</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>②後ろからの接触</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>③相手が激しく倒れるくらいのショルダーチャージは後ろからでなくてもファールとする</li>
