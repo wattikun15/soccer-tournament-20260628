@@ -1877,9 +1877,9 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
 
             <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■秒数制限</h2>
             <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
-              <li>・GKがペナルティーエリア内でボールを手で保持できる秒数は8秒</li>
+              <li>・GKがボールを手で保持できる秒数は8秒</li>
               <li style={{paddingLeft: '12px', color: '#666'}}>※反則時：相手コーナーキック</li>
-              <li>・ゴールキック、スローインで、遅延行為があった場合、5秒カウントする</li>
+              <li>・ゴールキック、スローインの対応が遅い場合、5秒カウント</li>
               <li style={{paddingLeft: '12px', color: '#666'}}>※反則時：ゴールキック→相手コーナーキック、スローイン→相手スローイン</li>
             </ul>
 
@@ -3454,9 +3454,9 @@ function RulesView({ handlePrint, setActiveTab }) {
 
         <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■秒数制限</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
-          <li>・GKがペナルティーエリア内でボールを手で保持できる秒数は8秒</li>
+          <li>・GKがボールを手で保持できる秒数は8秒</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>※反則時：相手コーナーキック</li>
-          <li>・ゴールキック、スローインで、遅延行為があった場合、5秒カウントする</li>
+          <li>・ゴールキック、スローインの対応が遅い場合、5秒カウント</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>※反則時：ゴールキック→相手コーナーキック、スローイン→相手スローイン</li>
         </ul>
 
