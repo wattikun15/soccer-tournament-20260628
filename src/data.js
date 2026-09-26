@@ -17,7 +17,18 @@ export const initialMembers = [
   { id: 'ga_07', teamId: 't1', number: '18', name: '馬場 浩平', birth: '1985/06', age: '41', isNakano: true, referee: '', checked: false },
   { id: 'ga_08', teamId: 't1', number: '03', name: '大門 唯', birth: '1979/04', age: '47', isNakano: false, referee: '', checked: false },
   { id: 'ga_09', teamId: 't1', number: '19', name: '七瀬 篤人', birth: '1974/11', age: '51', isNakano: false, referee: '4級', checked: false },
-  { id: 'ga_10', teamId: 't1', number: '13', name: '坂中 賢二', birth: '1978/06', age: '48', isNakano: true, referee: '4級', checked: false }
+  { id: 'ga_10', teamId: 't1', number: '13', name: '坂中 賢二', birth: '1978/06', age: '48', isNakano: true, referee: '4級', checked: false },
+
+  // かきっぱち (t4)
+  { id: 'kaki_01', teamId: 't4', number: '2', name: '石井 雄太', birth: '1983/07/22', age: '43', isNakano: false, referee: '', checked: false },
+  { id: 'kaki_02', teamId: 't4', number: '4', name: '浅利 定栄', birth: '1982/10/03', age: '43', isNakano: true, referee: '', checked: false },
+  { id: 'kaki_03', teamId: 't4', number: '7', name: '吉村 洋一', birth: '1980/08/20', age: '46', isNakano: false, referee: '', checked: false },
+  { id: 'kaki_04', teamId: 't4', number: '8', name: '田中 大祐', birth: '1979/01/16', age: '47', isNakano: true, referee: '', checked: false },
+  { id: 'kaki_05', teamId: 't4', number: '10', name: '鈴木 文也', birth: '1985/11/20', age: '40', isNakano: false, referee: '', checked: false },
+  { id: 'kaki_06', teamId: 't4', number: '3', name: '横塚 三雄', birth: '1978/04/01', age: '48', isNakano: false, referee: '4級', checked: false },
+  { id: 'kaki_07', teamId: 't4', number: '5', name: '川田 剛徳', birth: '1983/11/01', age: '42', isNakano: false, referee: '', checked: false },
+  { id: 'kaki_08', teamId: 't4', number: '6', name: '田井 康裕', birth: '1983/04/01', age: '43', isNakano: false, referee: '', checked: false },
+  { id: 'kaki_09', teamId: 't4', number: '11', name: '名嘉原 盛治', birth: '1978/12/30', age: '47', isNakano: false, referee: '', checked: false }
 ];
 
 export const initialMatches = [

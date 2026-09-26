@@ -124,11 +124,29 @@ function App() {
     window.__reset927Data = async () => {
       await saveMatchesToCloud(initialMatches);
       await saveMembersToCloud(initialMembers);
+      await saveTeamMasterToCloud('かきっぱち', initialMasterData['かきっぱち']);
       setMatches(initialMatches);
       setMembers(initialMembers);
+      setMasterMembers(prev => ({
+        ...prev,
+        'かきっぱち': initialMasterData['かきっぱち']
+      }));
       return 'OK';
     };
-  }, []);
+    window.__syncKakippachi = async () => {
+      const nonKaki = (members || []).filter(m => m.teamId !== 't4' && m.team !== 'かきっぱち');
+      const kakiMembers = initialMembers.filter(m => m.teamId === 't4');
+      const allMembers = [...nonKaki, ...kakiMembers];
+      await saveMembersToCloud(allMembers);
+      await saveTeamMasterToCloud('かきっぱち', initialMasterData['かきっぱち']);
+      setMembers(allMembers);
+      setMasterMembers(prev => ({
+        ...prev,
+        'かきっぱち': initialMasterData['かきっぱち']
+      }));
+      return 'OK';
+    };
+  }, [members]);
 
   // 1. Fetch data from Firebase (single source of truth)
   useEffect(() => {
