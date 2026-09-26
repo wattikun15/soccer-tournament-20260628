@@ -1,13 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Trophy, Users, Plus, X, Check, Edit2, Save, Trash2, BookOpen, Sun, Moon } from 'lucide-react';
+import { Calendar, Trophy, Users, Plus, X, Check, Edit2, Save, Trash2, BookOpen, Sun, Moon, Database, Search, UserPlus, Filter, Download } from 'lucide-react';
 import { initialTeams, initialMatches, initialMembers, calculateStandings, initialTimetable, teamSummary } from './data';
+import initialMasterData from './masterData.json';
 import { ensureAuth, auth } from './firebase';
 import './index.css';
 
 // Firebase Realtime Database URL
 const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260927';
+const FIREBASE_MASTER_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/team_master_members';
 
+// Sanitize team name for Firebase RTDB keys (prohibits '.', '$', '#', '[', ']', '/')
+export function cleanTeamKey(name) {
+  if (!name) return 'team';
+  return name.replace(/[\.\$#\[\]\/]/g, '').trim();
+}
 
+// Calculate age from birth string (supports '1980/05/12', '1980-05-12', '1980/5', '1980年5月12日', etc.)
+export function calculateAgeFromBirth(birthStr) {
+  if (!birthStr) return '';
+  const clean = String(birthStr).replace(/[年月日]/g, '/').replace(/-/g, '/');
+  const parts = clean.split('/').map(p => parseInt(p, 10)).filter(n => !isNaN(n));
+  if (parts.length === 0) return '';
+  const birthYear = parts[0];
+  const birthMonth = parts[1] ? parts[1] - 1 : 0;
+  const birthDay = parts[2] ? parts[2] : 1;
+  const today = new Date();
+  let age = today.getFullYear() - birthYear;
+  const m = today.getMonth() - birthMonth;
+  if (m < 0 || (m === 0 && today.getDate() < birthDay)) {
+    age--;
+  }
+  return age >= 0 && age < 120 ? age : '';
+}
 
 // Fetch wrapper that signs in anonymously and attaches the auth token
 // required by the Realtime Database rules.
@@ -23,6 +47,7 @@ function App() {
   const [matches, setMatches] = useState(initialMatches);
   const [teams, setTeams] = useState(initialTeams);
   const [members, setMembers] = useState(initialMembers);
+  const [masterMembers, setMasterMembers] = useState(initialMasterData || {});
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [printMode, setPrintMode] = useState('blank');
@@ -74,6 +99,27 @@ function App() {
     }
   };
 
+  const saveTeamMasterToCloud = async (teamKey, teamPlayers) => {
+    try {
+      const res = await authedFetch(`${FIREBASE_MASTER_URL}/${encodeURIComponent(teamKey)}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(teamPlayers)
+      });
+      if (!res.ok) console.error('Failed to save team master:', res.statusText);
+    } catch (err) {
+      console.error('Failed to save team master to cloud:', err);
+    }
+  };
+
+  const handleUpdateTeamMaster = (teamKey, updatedPlayers) => {
+    setMasterMembers(prev => ({
+      ...prev,
+      [teamKey]: updatedPlayers
+    }));
+    saveTeamMasterToCloud(teamKey, updatedPlayers);
+  };
+
   useEffect(() => {
     window.__reset927Data = async () => {
       await saveMatchesToCloud(initialMatches);
@@ -95,9 +141,10 @@ function App() {
         localStorage.removeItem('soccer_members_v2');
 
         // Fetch from Firebase
-        const [resMatches, resMembers] = await Promise.all([
+        const [resMatches, resMembers, resMaster] = await Promise.all([
           authedFetch(`${FIREBASE_BASE_URL}/matches.json`),
-          authedFetch(`${FIREBASE_BASE_URL}/members.json`)
+          authedFetch(`${FIREBASE_BASE_URL}/members.json`),
+          authedFetch(`${FIREBASE_MASTER_URL}.json`)
         ]);
 
         let finalMatches = initialMatches;
@@ -125,6 +172,19 @@ function App() {
           await saveMembersToCloud(initialMembers);
         }
 
+        if (resMaster.ok) {
+          const cloudMaster = await resMaster.json();
+          if (cloudMaster && typeof cloudMaster === 'object' && Object.keys(cloudMaster).length > 0) {
+            setMasterMembers(cloudMaster);
+          } else {
+            await authedFetch(`${FIREBASE_MASTER_URL}.json`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(initialMasterData)
+            });
+          }
+        }
+
         setMatches(finalMatches);
         setMembers(finalMembers);
       } catch (err) {
@@ -144,9 +204,10 @@ function App() {
       if (isLoading) return;
 
       try {
-        const [resMatches, resMembers] = await Promise.all([
+        const [resMatches, resMembers, resMaster] = await Promise.all([
           authedFetch(`${FIREBASE_BASE_URL}/matches.json`),
-          authedFetch(`${FIREBASE_BASE_URL}/members.json`)
+          authedFetch(`${FIREBASE_BASE_URL}/members.json`),
+          authedFetch(`${FIREBASE_MASTER_URL}.json`)
         ]);
 
         if (resMatches.ok) {
@@ -160,6 +221,13 @@ function App() {
           const cloudMembers = await resMembers.json();
           if (Array.isArray(cloudMembers) && cloudMembers.length > 0) {
             setMembers(cloudMembers);
+          }
+        }
+
+        if (resMaster.ok) {
+          const cloudMaster = await resMaster.json();
+          if (cloudMaster && typeof cloudMaster === 'object') {
+            setMasterMembers(cloudMaster);
           }
         }
       } catch (err) {
@@ -642,6 +710,17 @@ function App() {
             members={members}
             setMembers={handleSetMembers}
             isAdmin={isAdmin}
+            masterMembers={masterMembers}
+            onUpdateTeamMaster={handleUpdateTeamMaster}
+          />
+        )}
+
+        {activeTab === 'master' && (
+          <MasterMembersView
+            teams={teams}
+            masterMembers={masterMembers}
+            onUpdateTeamMaster={handleUpdateTeamMaster}
+            isAdmin={isAdmin}
           />
         )}
         
@@ -675,6 +754,13 @@ function App() {
         >
           <Users size={24} />
           <span>チーム</span>
+        </div>
+        <div 
+          className={`nav-item ${activeTab === 'master' ? 'active' : ''}`}
+          onClick={() => setActiveTab('master')}
+        >
+          <Database size={24} />
+          <span>過去メンバー</span>
         </div>
       </nav>
 
@@ -2484,17 +2570,218 @@ function StandingsView({ standings, matches, members, getTeam }) {
   );
 }
 
-function TeamsView({ teams, members, setMembers, isAdmin }) {
+function MasterPickerModal({ isOpen, onClose, teamName, masterPlayers, currentMembers, onAddPlayers }) {
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [search, setSearch] = useState('');
+
+  if (!isOpen) return null;
+
+  const currentNames = new Set(currentMembers.map(m => (m.name || '').trim()));
+
+  const filtered = (masterPlayers || []).filter(p => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return (p.name || '').toLowerCase().includes(q) || String(p.number || '').includes(q);
+  });
+
+  const toggleSelect = (p) => {
+    const isRegistered = currentNames.has((p.name || '').trim());
+    if (isRegistered) return;
+    const pid = p.id || p.name;
+    if (selectedIds.includes(pid)) {
+      setSelectedIds(selectedIds.filter(id => id !== pid));
+    } else {
+      setSelectedIds([...selectedIds, pid]);
+    }
+  };
+
+  const handleConfirm = () => {
+    const toAdd = (masterPlayers || []).filter(p => selectedIds.includes(p.id || p.name));
+    onAddPlayers(toAdd);
+    setSelectedIds([]);
+    onClose();
+  };
+
+  const handleAddSingle = (p) => {
+    onAddPlayers([p]);
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 10000, padding: 16
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--glass-bg)', backdropFilter: 'blur(20px)',
+          borderRadius: 16, padding: 24, width: 560, maxWidth: '100%',
+          maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+          border: '1px solid var(--glass-border)', boxShadow: 'var(--card-shadow)',
+          position: 'relative'
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: 14, right: 14,
+            background: 'var(--pill-bg)', border: '1px solid var(--glass-border)',
+            color: 'var(--text-primary)', cursor: 'pointer', padding: 6,
+            borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+          title="閉じる"
+        >
+          <X size={20} />
+        </button>
+
+        <h3 style={{margin: '0 0 4px 0', color: 'var(--text-primary)', fontSize: '1.15rem'}}>
+          📋 過去メンバーから追加
+        </h3>
+        <p style={{margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
+          【{teamName}】の過去大会参加メンバー（{masterPlayers.length}名）から選択
+        </p>
+
+        {/* Search */}
+        <div style={{marginBottom: 14}}>
+          <input
+            type="text"
+            className="search-input-box"
+            placeholder="🔍 氏名・背番号で絞り込み..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Players List */}
+        <div style={{flex: 1, overflowY: 'auto', minHeight: 180, maxHeight: 380, paddingRight: 4}}>
+          {filtered.length === 0 ? (
+            <div style={{textAlign: 'center', color: 'var(--text-secondary)', padding: '30px 0'}}>
+              該当するメンバーが見つかりません
+            </div>
+          ) : (
+            filtered.map(p => {
+              const pid = p.id || p.name;
+              const isRegistered = currentNames.has((p.name || '').trim());
+              const isSelected = selectedIds.includes(pid);
+              return (
+                <div
+                  key={pid}
+                  className={`picker-player-item ${isSelected ? 'selected' : ''} ${isRegistered ? 'disabled' : ''}`}
+                  onClick={() => toggleSelect(p)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected || isRegistered}
+                    disabled={isRegistered}
+                    onChange={() => {}}
+                    style={{width: 18, height: 18, cursor: isRegistered ? 'not-allowed' : 'pointer'}}
+                  />
+                  <div className="badge-number">
+                    {p.number || '-'}
+                  </div>
+                  <div style={{flex: 1, minWidth: 0}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap'}}>
+                      <span style={{fontWeight: 'bold', color: isRegistered ? 'var(--text-muted)' : 'var(--text-primary)'}}>
+                        {p.name}
+                      </span>
+                      {isRegistered && (
+                        <span style={{fontSize: '0.72rem', background: 'var(--pill-bg)', color: 'var(--text-muted)', padding: '1px 6px', borderRadius: 4}}>
+                          登録済
+                        </span>
+                      )}
+                      {p.isNakano && <span className="badge-nakano">中野区</span>}
+                      {p.referee && <span className="badge-referee">{p.referee}</span>}
+                    </div>
+                    <div style={{fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 2}}>
+                      {p.birth && <span>生年月日: {p.birth} </span>}
+                      {p.age && <span>({p.age}歳)</span>}
+                      {p.memo && <span style={{marginLeft: 6, opacity: 0.8}}>※{p.memo}</span>}
+                    </div>
+                  </div>
+                  {!isRegistered && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddSingle(p);
+                      }}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'var(--accent-color)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold',
+                        flexShrink: 0
+                      }}
+                    >
+                      ＋ 追加
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--glass-border)'}}>
+          <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
+            選択中: <strong style={{color: 'var(--accent-color)'}}>{selectedIds.length}</strong> 名
+          </span>
+          <div style={{display: 'flex', gap: 8}}>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.88rem'
+              }}
+            >
+              閉じる
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={selectedIds.length === 0}
+              className="btn btn-primary"
+              style={{
+                padding: '8px 18px', width: 'auto', marginBottom: 0,
+                opacity: selectedIds.length === 0 ? 0.5 : 1,
+                cursor: selectedIds.length === 0 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              選択した選手を追加 ({selectedIds.length}名)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, onUpdateTeamMaster }) {
   const [selectedTeam, setSelectedTeam] = useState(teams[0]?.id);
   const [editingMember, setEditingMember] = useState(null);
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
+  const [editBirth, setEditBirth] = useState('');
   const [editAge, setEditAge] = useState('');
   const [editReferee, setEditReferee] = useState('');
   const [editIsNakano, setEditIsNakano] = useState(false);
   const [checkMode, setCheckMode] = useState(false);
   const [checkBackup, setCheckBackup] = useState(null);
   const [deleteMode, setDeleteMode] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+
+  const currTeam = teams.find(t => t.id === selectedTeam);
+  const currTeamKey = cleanTeamKey(currTeam?.name);
+  const currMasterPlayers = masterMembers[currTeamKey] || [];
 
   const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => {
     if (a.id === editingMember) return -1;
@@ -2506,15 +2793,83 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
   const startEdit = (member) => {
     setEditingMember(member.id);
     setEditName(member.name);
-    setEditNumber(member.number);
+    setEditNumber(member.number || '');
+    setEditBirth(member.birth || '');
     setEditAge(member.age || '');
     setEditReferee(member.referee || '');
     setEditIsNakano(member.isNakano || member.isResident || member.isWorker || false);
   };
 
+  const handleBirthChange = (val) => {
+    setEditBirth(val);
+    const calcAge = calculateAgeFromBirth(val);
+    if (calcAge) setEditAge(calcAge);
+  };
+
+  const handleNameChange = (val) => {
+    setEditName(val);
+    const matched = currMasterPlayers.find(p => (p.name || '').trim() === val.trim());
+    if (matched) {
+      if (matched.number && !editNumber) setEditNumber(matched.number);
+      if (matched.birth) {
+        setEditBirth(matched.birth);
+        const a = calculateAgeFromBirth(matched.birth);
+        if (a) setEditAge(a);
+        else if (matched.age) setEditAge(matched.age);
+      } else if (matched.age && !editAge) {
+        setEditAge(matched.age);
+      }
+      if (matched.referee) setEditReferee(matched.referee);
+      if (typeof matched.isNakano === 'boolean') setEditIsNakano(matched.isNakano);
+    }
+  };
+
   const saveEdit = (id) => {
-    setMembers(members.map(m => m.id === id ? { ...m, name: editName, number: editNumber, age: editAge, referee: editReferee, isNakano: editIsNakano, isResident: false, isWorker: false } : m));
+    const updatedMember = {
+      name: editName.trim(),
+      number: editNumber.trim(),
+      birth: editBirth.trim(),
+      age: editAge ? parseInt(editAge, 10) : '',
+      referee: editReferee.trim(),
+      isNakano: editIsNakano,
+      isResident: false,
+      isWorker: false
+    };
+
+    setMembers(members.map(m => m.id === id ? { ...m, ...updatedMember } : m));
     setEditingMember(null);
+
+    // Sync back to master database
+    if (onUpdateTeamMaster && currTeamKey && editName.trim()) {
+      const existingMasterIdx = currMasterPlayers.findIndex(p => (p.name || '').trim() === editName.trim());
+      let newMasterList;
+      if (existingMasterIdx >= 0) {
+        newMasterList = [...currMasterPlayers];
+        newMasterList[existingMasterIdx] = {
+          ...newMasterList[existingMasterIdx],
+          number: editNumber.trim() || newMasterList[existingMasterIdx].number,
+          birth: editBirth.trim() || newMasterList[existingMasterIdx].birth,
+          age: editAge ? parseInt(editAge, 10) : newMasterList[existingMasterIdx].age,
+          referee: editReferee.trim() || newMasterList[existingMasterIdx].referee,
+          isNakano: editIsNakano
+        };
+      } else {
+        newMasterList = [
+          ...currMasterPlayers,
+          {
+            id: 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            number: editNumber.trim(),
+            name: editName.trim(),
+            birth: editBirth.trim(),
+            age: editAge ? parseInt(editAge, 10) : '',
+            referee: editReferee.trim(),
+            isNakano: editIsNakano,
+            memo: 'メンバー表から同期'
+          }
+        ];
+      }
+      onUpdateTeamMaster(currTeamKey, newMasterList);
+    }
   };
 
   const cancelEdit = (id) => {
@@ -2533,13 +2888,29 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
 
   const addNewMember = () => {
     const newId = 'p' + Date.now();
-    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '', age: '', referee: '', isNakano: false }]);
+    setMembers([...members, { id: newId, teamId: selectedTeam, name: '新規選手', number: '', birth: '', age: '', referee: '', isNakano: false }]);
     setEditingMember(newId);
     setEditName('');
     setEditNumber('');
+    setEditBirth('');
     setEditAge('');
     setEditReferee('');
     setEditIsNakano(false);
+  };
+
+  const handleAddFromMaster = (selectedPlayers) => {
+    const newMembers = selectedPlayers.map((p, idx) => ({
+      id: 'p' + (Date.now() + idx) + '_' + Math.random().toString(36).substr(2, 4),
+      teamId: selectedTeam,
+      name: p.name,
+      number: p.number || '',
+      birth: p.birth || '',
+      age: p.age || (p.birth ? calculateAgeFromBirth(p.birth) : ''),
+      referee: p.referee || '',
+      isNakano: Boolean(p.isNakano),
+      checked: false
+    }));
+    setMembers([...members, ...newMembers]);
   };
 
   const toggleCheck = (id) => {
@@ -2570,11 +2941,30 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
       <div className="glass-card" style={{marginTop: 16}}>
         {/* ヘッダー */}
         <div style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 16}}>
-          <div style={{display: 'flex', gap: 8}}>
+          <div style={{display: 'flex', gap: 8, flexWrap: 'wrap'}}>
             {!editingMember && isAdmin && !checkMode && !deleteMode && (
-              <button className="btn btn-primary" style={{padding: '8px 16px', width: 'auto', marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4}} onClick={addNewMember}>
-                <Plus size={16} /> 追加
-              </button>
+              <>
+                <button
+                  className="btn btn-primary"
+                  style={{
+                    padding: '8px 14px', width: 'auto', marginBottom: 0,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+                  }}
+                  onClick={() => setShowPicker(true)}
+                  title="過去の大会参加メンバーから選択して追加"
+                >
+                  <UserPlus size={16} /> 過去メンバーから追加
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{padding: '8px 14px', width: 'auto', marginBottom: 0, display: 'flex', alignItems: 'center', gap: 4}}
+                  onClick={addNewMember}
+                >
+                  <Plus size={16} /> 新規追加
+                </button>
+              </>
             )}
             {!editingMember && isAdmin && !checkMode && (
               <button
@@ -2755,11 +3145,27 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                     />
                     <input 
                       type="text" 
+                      list="team-master-names"
                       value={editName} 
-                      onChange={e => setEditName(e.target.value)}
-                      placeholder="名前"
+                      onChange={e => handleNameChange(e.target.value)}
+                      placeholder="名前 (過去選手を候補表示)"
                       className="edit-input"
-                      style={{flex: '1 1 120px', minWidth: 100}}
+                      style={{flex: '1 1 140px', minWidth: 120}}
+                    />
+                    <datalist id="team-master-names">
+                      {currMasterPlayers.map(p => (
+                        <option key={p.id || p.name} value={p.name}>
+                          No.{p.number || '-'} {p.birth ? `(${p.birth})` : ''} {p.referee || ''}
+                        </option>
+                      ))}
+                    </datalist>
+                    <input 
+                      type="text" 
+                      value={editBirth} 
+                      onChange={e => handleBirthChange(e.target.value)}
+                      placeholder="生年月日 (例: 1980/05/12)"
+                      className="edit-input"
+                      style={{flex: '1 1 140px', minWidth: 120}}
                     />
                     <input 
                       type="number" 
@@ -2773,7 +3179,7 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       value={editReferee} 
                       onChange={e => setEditReferee(e.target.value)}
                       className="edit-input"
-                      style={{flex: '1 1 120px', minWidth: 100}}
+                      style={{flex: '1 1 100px', minWidth: 90}}
                     >
                       <option value="">(審判資格)</option>
                       <option value="4級">4級</option>
@@ -2785,23 +3191,23 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
                       <input type="checkbox" checked={editIsNakano} onChange={e => setEditIsNakano(e.target.checked)} />
                       中野区(在住・在勤)
                     </label>
-                    
                   </div>
                 </div>
               ) : (
                 <div style={{display: 'flex', gap: 16, flex: 1, alignItems: 'center'}}>
                   <div style={{
-                    width: 40,
+                    width: 36,
                     color: checkMode && member.checked ? '#4caf50' : 'var(--text-secondary)',
                     fontWeight: 'bold'
-                  }}>{member.number}</div>
+                  }}>{member.number || '-'}</div>
                   <div style={{
                     flex: 1,
                     fontWeight: checkMode && member.checked ? 'bold' : 'normal',
                     color: checkMode && member.checked ? 'var(--checked-text)' : 'inherit'
                   }}>
                     {member.name}
-                    {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
+                    {member.birth && <span style={{marginLeft: 8, fontSize: '0.8rem', color: 'var(--text-secondary)'}}>{member.birth}</span>}
+                    {member.age && <span style={{marginLeft: 6, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
                     {!checkMode && member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', padding: '2px 6px', borderRadius: 4, color: 'var(--pill-text)'}}>{member.referee}</span>}
                     {!checkMode && (member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                   </div>
@@ -2865,6 +3271,651 @@ function TeamsView({ teams, members, setMembers, isAdmin }) {
           </button>
         )}
       </div>
+
+      {/* 過去メンバーピッカーモーダル */}
+      <MasterPickerModal
+        isOpen={showPicker}
+        onClose={() => setShowPicker(false)}
+        teamName={currTeam?.name || ''}
+        masterPlayers={currMasterPlayers}
+        currentMembers={teamMembers}
+        onAddPlayers={handleAddFromMaster}
+      />
+    </div>
+  );
+}
+
+function MasterMembersView({ teams, masterMembers = {}, onUpdateTeamMaster, isAdmin }) {
+  const allMasterTeamKeys = Array.from(new Set([
+    ...teams.map(t => cleanTeamKey(t.name)),
+    ...Object.keys(masterMembers || {})
+  ])).filter(Boolean);
+
+  const [selectedTeamKey, setSelectedTeamKey] = useState(allMasterTeamKeys[0] || 'GA');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'nakano' | 'referee'
+  const [editingPlayer, setEditingPlayer] = useState(null); // null | player object | 'new'
+  const [showNewTeamModal, setShowNewTeamModal] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+
+  // Form states for modal
+  const [formNumber, setFormNumber] = useState('');
+  const [formName, setFormName] = useState('');
+  const [formBirth, setFormBirth] = useState('');
+  const [formAge, setFormAge] = useState('');
+  const [formIsNakano, setFormIsNakano] = useState(false);
+  const [formReferee, setFormReferee] = useState('');
+  const [formMemo, setFormMemo] = useState('');
+
+  const currentTeamPlayers = masterMembers[selectedTeamKey] || [];
+
+  const filteredPlayers = currentTeamPlayers.filter(p => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const matchName = (p.name || '').toLowerCase().includes(q);
+      const matchNum = String(p.number || '').includes(q);
+      if (!matchName && !matchNum) return false;
+    }
+    if (filterType === 'nakano' && !p.isNakano) return false;
+    if (filterType === 'referee' && !p.referee) return false;
+    return true;
+  }).sort((a, b) => {
+    const na = Number(a.number);
+    const nb = Number(b.number);
+    if (!isNaN(na) && !isNaN(nb) && na !== 0 && nb !== 0) return na - nb;
+    return (a.name || '').localeCompare(b.name || '', 'ja');
+  });
+
+  const totalCount = currentTeamPlayers.length;
+  const nakanoCount = currentTeamPlayers.filter(p => p.isNakano).length;
+  const refCount = currentTeamPlayers.filter(p => p.referee).length;
+
+  const openAddModal = () => {
+    setEditingPlayer('new');
+    setFormNumber('');
+    setFormName('');
+    setFormBirth('');
+    setFormAge('');
+    setFormIsNakano(false);
+    setFormReferee('');
+    setFormMemo('');
+  };
+
+  const openEditModal = (player) => {
+    setEditingPlayer(player);
+    setFormNumber(player.number || '');
+    setFormName(player.name || '');
+    setFormBirth(player.birth || '');
+    setFormAge(player.age !== undefined && player.age !== null ? String(player.age) : '');
+    setFormIsNakano(Boolean(player.isNakano));
+    setFormReferee(player.referee || '');
+    setFormMemo(player.memo || '');
+  };
+
+  const handleBirthChange = (val) => {
+    setFormBirth(val);
+    const calcAge = calculateAgeFromBirth(val);
+    if (calcAge) setFormAge(calcAge);
+  };
+
+  const handleSavePlayer = (e) => {
+    e?.preventDefault();
+    if (!formName.trim()) {
+      alert('氏名を入力してください');
+      return;
+    }
+
+    let updatedList;
+    if (editingPlayer === 'new') {
+      const newPlayer = {
+        id: 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        number: formNumber.trim(),
+        name: formName.trim(),
+        birth: formBirth.trim(),
+        age: formAge ? parseInt(formAge, 10) : '',
+        isNakano: formIsNakano,
+        referee: formReferee.trim(),
+        memo: formMemo.trim()
+      };
+      updatedList = [...currentTeamPlayers, newPlayer];
+    } else {
+      updatedList = currentTeamPlayers.map(p => {
+        if (p.id === editingPlayer.id || (!p.id && p.name === editingPlayer.name)) {
+          return {
+            ...p,
+            number: formNumber.trim(),
+            name: formName.trim(),
+            birth: formBirth.trim(),
+            age: formAge ? parseInt(formAge, 10) : '',
+            isNakano: formIsNakano,
+            referee: formReferee.trim(),
+            memo: formMemo.trim()
+          };
+        }
+        return p;
+      });
+    }
+
+    onUpdateTeamMaster(selectedTeamKey, updatedList);
+    setEditingPlayer(null);
+  };
+
+  const handleDeletePlayer = (player) => {
+    if (window.confirm(`「${player.name}」選手をマスターDBから削除しますか？`)) {
+      const updatedList = currentTeamPlayers.filter(p => p !== player && p.id !== player.id);
+      onUpdateTeamMaster(selectedTeamKey, updatedList);
+    }
+  };
+
+  const handleCreateTeam = (e) => {
+    e?.preventDefault();
+    const clean = cleanTeamKey(newTeamName);
+    if (!clean) return;
+    if (masterMembers[clean]) {
+      alert('既に同名のチームが存在します');
+      return;
+    }
+    onUpdateTeamMaster(clean, []);
+    setSelectedTeamKey(clean);
+    setNewTeamName('');
+    setShowNewTeamModal(false);
+  };
+
+  const handleExportCSV = () => {
+    const header = ['背番号', '氏名', '生年月日', '年齢', '中野区', '審判資格', '備考'];
+    const rows = currentTeamPlayers.map(p => [
+      p.number || '',
+      p.name || '',
+      p.birth || '',
+      p.age || '',
+      p.isNakano ? '中野区' : '',
+      p.referee || '',
+      p.memo || ''
+    ]);
+    const csvContent = '\uFEFF' + [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${selectedTeamKey}_過去参加メンバー一覧.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12}}>
+        <h2 style={{margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)'}}>
+          <Database size={22} color="var(--accent-color)" /> 過去大会参加メンバーDB
+        </h2>
+        {isAdmin && (
+          <button
+            onClick={() => setShowNewTeamModal(true)}
+            style={{
+              padding: '6px 12px', borderRadius: 8,
+              background: 'var(--pill-bg)', border: '1px solid var(--glass-border)',
+              color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <Plus size={14} /> チーム追加
+          </button>
+        )}
+      </div>
+
+      <p style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 16}}>
+        各チームがこれまでの大会に参加した選手マスターデータです。メンバー表作成時の自動入力や一括追加に利用されます。
+      </p>
+
+      {/* Team Tabs */}
+      <div className="tabs" style={{overflowX: 'auto', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch', gap: 8, background: 'transparent', padding: 0}}>
+        {allMasterTeamKeys.map(teamKey => {
+          const tMatch = teams.find(t => cleanTeamKey(t.name) === teamKey);
+          const count = (masterMembers[teamKey] || []).length;
+          return (
+            <div
+              key={teamKey}
+              className={`tab ${selectedTeamKey === teamKey ? 'active' : ''}`}
+              onClick={() => setSelectedTeamKey(teamKey)}
+              style={{
+                flex: '0 0 auto', padding: '8px 14px',
+                background: selectedTeamKey === teamKey ? 'var(--accent-color)' : 'var(--tabs-bg)',
+                border: selectedTeamKey === teamKey ? '1px solid transparent' : '1px solid var(--glass-border)',
+                color: selectedTeamKey === teamKey ? '#ffffff' : 'var(--text-secondary)',
+                cursor: 'pointer', borderRadius: 8, fontSize: '0.88rem',
+                display: 'inline-flex', alignItems: 'center', gap: 6
+              }}
+            >
+              <span>{tMatch?.emoji || '⚽'} {teamKey}</span>
+              <span style={{
+                fontSize: '0.72rem', padding: '1px 6px', borderRadius: 99,
+                background: selectedTeamKey === teamKey ? 'rgba(255,255,255,0.25)' : 'var(--pill-bg)'
+              }}>
+                {count}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Main Glass Card */}
+      <div className="glass-card" style={{marginTop: 16}}>
+        {/* Team Overview Card */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+          gap: 12, marginBottom: 16
+        }}>
+          <div style={{background: 'var(--item-sub-bg)', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)'}}>
+            <div style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>登録選手数</div>
+            <div style={{fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: 2}}>
+              {totalCount} <span style={{fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--text-muted)'}}>名</span>
+            </div>
+          </div>
+          <div style={{background: 'var(--item-sub-bg)', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)'}}>
+            <div style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>中野区(在住・在勤)</div>
+            <div style={{fontSize: '1.4rem', fontWeight: 'bold', color: '#e91e63', marginTop: 2}}>
+              {nakanoCount} <span style={{fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--text-muted)'}}>名 ({totalCount > 0 ? Math.round((nakanoCount / totalCount) * 100) : 0}%)</span>
+            </div>
+          </div>
+          <div style={{background: 'var(--item-sub-bg)', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)'}}>
+            <div style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>審判資格保持者</div>
+            <div style={{fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--accent-color)', marginTop: 2}}>
+              {refCount} <span style={{fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--text-muted)'}}>名</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Toolbar */}
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16}}>
+          <div style={{display: 'flex', gap: 8, flex: '1 1 240px', minWidth: 200}}>
+            <div style={{position: 'relative', width: '100%'}}>
+              <input
+                type="text"
+                className="search-input-box"
+                placeholder="🔍 氏名・背番号で検索..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap'}}>
+            {/* Filter buttons */}
+            <div style={{display: 'flex', background: 'var(--tabs-bg)', borderRadius: 8, padding: 3, border: '1px solid var(--border-subtle)'}}>
+              <button
+                onClick={() => setFilterType('all')}
+                style={{
+                  padding: '5px 10px', fontSize: '0.78rem', borderRadius: 6, border: 'none',
+                  background: filterType === 'all' ? 'var(--accent-color)' : 'transparent',
+                  color: filterType === 'all' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer'
+                }}
+              >
+                全員
+              </button>
+              <button
+                onClick={() => setFilterType('nakano')}
+                style={{
+                  padding: '5px 10px', fontSize: '0.78rem', borderRadius: 6, border: 'none',
+                  background: filterType === 'nakano' ? 'var(--accent-color)' : 'transparent',
+                  color: filterType === 'nakano' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer'
+                }}
+              >
+                中野区
+              </button>
+              <button
+                onClick={() => setFilterType('referee')}
+                style={{
+                  padding: '5px 10px', fontSize: '0.78rem', borderRadius: 6, border: 'none',
+                  background: filterType === 'referee' ? 'var(--accent-color)' : 'transparent',
+                  color: filterType === 'referee' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer'
+                }}
+              >
+                審判有
+              </button>
+            </div>
+
+            {isAdmin && (
+              <button
+                onClick={openAddModal}
+                className="btn btn-primary"
+                style={{
+                  padding: '7px 14px', width: 'auto', marginBottom: 0,
+                  fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 4
+                }}
+              >
+                <Plus size={15} /> 選手登録
+              </button>
+            )}
+
+            <button
+              onClick={handleExportCSV}
+              style={{
+                padding: '7px 12px', borderRadius: 8,
+                background: 'var(--pill-bg)', border: '1px solid var(--glass-border)',
+                color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.82rem',
+                display: 'flex', alignItems: 'center', gap: 4
+              }}
+              title="CSV形式でダウンロード"
+            >
+              <Download size={14} /> CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Master Members Table */}
+        <div className="master-table-wrapper">
+          <table className="master-table">
+            <thead>
+              <tr>
+                <th style={{width: 50, textAlign: 'center'}}>No</th>
+                <th style={{minWidth: 120}}>氏名</th>
+                <th style={{minWidth: 100}}>生年月日</th>
+                <th style={{width: 60, textAlign: 'center'}}>年齢</th>
+                <th style={{width: 80, textAlign: 'center'}}>中野区</th>
+                <th style={{width: 90, textAlign: 'center'}}>審判資格</th>
+                <th style={{minWidth: 140}}>備考 / 大会履歴</th>
+                {isAdmin && <th style={{width: 80, textAlign: 'center'}}>操作</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPlayers.length === 0 ? (
+                <tr>
+                  <td colSpan={isAdmin ? 8 : 7} style={{textAlign: 'center', padding: '30px 0', color: 'var(--text-secondary)'}}>
+                    登録された選手データがありません
+                  </td>
+                </tr>
+              ) : (
+                filteredPlayers.map((player) => (
+                  <tr key={player.id || `${player.name}_${player.number}`}>
+                    <td style={{textAlign: 'center', fontWeight: 'bold', color: 'var(--accent-color)'}}>
+                      {player.number || '-'}
+                    </td>
+                    <td style={{fontWeight: '600'}}>
+                      {player.name}
+                    </td>
+                    <td style={{color: 'var(--text-secondary)', fontSize: '0.85rem'}}>
+                      {player.birth || '―'}
+                    </td>
+                    <td style={{textAlign: 'center', color: 'var(--text-secondary)'}}>
+                      {player.age ? `${player.age}歳` : (player.birth ? `${calculateAgeFromBirth(player.birth)}歳` : '―')}
+                    </td>
+                    <td style={{textAlign: 'center'}}>
+                      {player.isNakano ? (
+                        <span className="badge-nakano">中野区</span>
+                      ) : (
+                        <span style={{color: 'var(--text-muted)'}}>―</span>
+                      )}
+                    </td>
+                    <td style={{textAlign: 'center'}}>
+                      {player.referee ? (
+                        <span className="badge-referee">{player.referee}</span>
+                      ) : (
+                        <span style={{color: 'var(--text-muted)'}}>―</span>
+                      )}
+                    </td>
+                    <td style={{fontSize: '0.8rem', color: 'var(--text-secondary)'}}>
+                      {player.memo || '―'}
+                    </td>
+                    {isAdmin && (
+                      <td style={{textAlign: 'center'}}>
+                        <div style={{display: 'inline-flex', gap: 4}}>
+                          <button
+                            onClick={() => openEditModal(player)}
+                            style={{
+                              background: 'transparent', border: 'none',
+                              color: 'var(--text-secondary)', cursor: 'pointer', padding: 4
+                            }}
+                            title="編集"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePlayer(player)}
+                            style={{
+                              background: 'transparent', border: 'none',
+                              color: 'var(--danger)', cursor: 'pointer', padding: 4
+                            }}
+                            title="削除"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Edit / Add Player Modal */}
+      {editingPlayer && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10001, padding: 16
+          }}
+          onClick={() => setEditingPlayer(null)}
+        >
+          <div
+            style={{
+              background: 'var(--glass-bg)', backdropFilter: 'blur(20px)',
+              borderRadius: 16, padding: 24, width: 480, maxWidth: '100%',
+              border: '1px solid var(--glass-border)', boxShadow: 'var(--card-shadow)',
+              position: 'relative'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setEditingPlayer(null)}
+              style={{
+                position: 'absolute', top: 14, right: 14,
+                background: 'var(--pill-bg)', border: '1px solid var(--glass-border)',
+                color: 'var(--text-primary)', cursor: 'pointer', padding: 6,
+                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <h3 style={{marginTop: 0, marginBottom: 16, color: 'var(--text-primary)'}}>
+              {editingPlayer === 'new' ? '新規選手登録 (マスターDB)' : '選手情報編集'}
+            </h3>
+
+            <form onSubmit={handleSavePlayer} style={{display: 'flex', flexDirection: 'column', gap: 14}}>
+              <div style={{display: 'flex', gap: 12}}>
+                <div style={{width: 90}}>
+                  <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4}}>
+                    背番号
+                  </label>
+                  <input
+                    type="number"
+                    value={formNumber}
+                    onChange={e => setFormNumber(e.target.value)}
+                    placeholder="No"
+                    className="edit-input"
+                    style={{width: '100%'}}
+                  />
+                </div>
+                <div style={{flex: 1}}>
+                  <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4}}>
+                    氏名 <span style={{color: 'var(--danger)'}}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    placeholder="選手氏名"
+                    className="edit-input"
+                    style={{width: '100%'}}
+                  />
+                </div>
+              </div>
+
+              <div style={{display: 'flex', gap: 12}}>
+                <div style={{flex: 1}}>
+                  <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4}}>
+                    生年月日 (例: 1980/05/12)
+                  </label>
+                  <input
+                    type="text"
+                    value={formBirth}
+                    onChange={e => handleBirthChange(e.target.value)}
+                    placeholder="YYYY/MM/DD"
+                    className="edit-input"
+                    style={{width: '100%'}}
+                  />
+                </div>
+                <div style={{width: 90}}>
+                  <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4}}>
+                    年齢 (自動計算)
+                  </label>
+                  <input
+                    type="number"
+                    value={formAge}
+                    onChange={e => setFormAge(e.target.value)}
+                    placeholder="歳"
+                    className="edit-input"
+                    style={{width: '100%'}}
+                  />
+                </div>
+              </div>
+
+              <div style={{display: 'flex', gap: 12, alignItems: 'center'}}>
+                <div style={{flex: 1}}>
+                  <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4}}>
+                    審判資格
+                  </label>
+                  <select
+                    value={formReferee}
+                    onChange={e => setFormReferee(e.target.value)}
+                    className="edit-input"
+                    style={{width: '100%'}}
+                  >
+                    <option value="">資格なし</option>
+                    <option value="4級">4級</option>
+                    <option value="3級">3級</option>
+                    <option value="2級">2級</option>
+                  </select>
+                </div>
+                <div style={{flex: 1, paddingTop: 18}}>
+                  <label style={{display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-primary)'}}>
+                    <input
+                      type="checkbox"
+                      checked={formIsNakano}
+                      onChange={e => setFormIsNakano(e.target.checked)}
+                      style={{width: 18, height: 18}}
+                    />
+                    中野区(在住・在勤)
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4}}>
+                  備考 / 過去大会履歴
+                </label>
+                <input
+                  type="text"
+                  value={formMemo}
+                  onChange={e => setFormMemo(e.target.value)}
+                  placeholder="例: 2026/06/28, 08/23参加"
+                  className="edit-input"
+                  style={{width: '100%'}}
+                />
+              </div>
+
+              <div style={{display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12}}>
+                <button
+                  type="button"
+                  onClick={() => setEditingPlayer(null)}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8,
+                    background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                    color: 'var(--text-secondary)', cursor: 'pointer'
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{padding: '8px 20px', width: 'auto', marginBottom: 0}}
+                >
+                  <Save size={16} /> 保存
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Team Modal */}
+      {showNewTeamModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10001, padding: 16
+          }}
+          onClick={() => setShowNewTeamModal(false)}
+        >
+          <div
+            style={{
+              background: 'var(--glass-bg)', backdropFilter: 'blur(20px)',
+              borderRadius: 16, padding: 24, width: 380, maxWidth: '100%',
+              border: '1px solid var(--glass-border)', boxShadow: 'var(--card-shadow)',
+              position: 'relative'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{marginTop: 0, marginBottom: 16, color: 'var(--text-primary)'}}>
+              新規チーム追加
+            </h3>
+            <form onSubmit={handleCreateTeam}>
+              <div style={{marginBottom: 16}}>
+                <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4}}>
+                  チーム名
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="例: 新チームFC"
+                  value={newTeamName}
+                  onChange={e => setNewTeamName(e.target.value)}
+                  className="edit-input"
+                  style={{width: '100%'}}
+                />
+              </div>
+              <div style={{display: 'flex', justifyContent: 'flex-end', gap: 8}}>
+                <button
+                  type="button"
+                  onClick={() => setShowNewTeamModal(false)}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8,
+                    background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                    color: 'var(--text-secondary)', cursor: 'pointer'
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{padding: '8px 20px', width: 'auto', marginBottom: 0}}
+                >
+                  追加
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
