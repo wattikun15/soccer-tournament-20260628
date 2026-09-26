@@ -1860,12 +1860,13 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
               <li>・フリーキック時の距離は7m離れる</li>
               <li>・スローイン時の距離は2m離れる</li>
               <li>・キックオフシュートは禁止</li>
-              <li>・禁止事項(🟨(軽度)、 🟥(重度)の提示)</li>
+              <li>・🟨と 🟥の提示 ※程度により色を変える</li>
               <li style={{paddingLeft: '12px'}}>①スライディングでの接触(キーパーを含む)</li>
               <li style={{paddingLeft: '12px'}}>②後ろからの接触</li>
               <li style={{paddingLeft: '12px'}}>③相手が激しく倒れるくらいのショルダーチャージは後ろからでなくてもファールとする</li>
               <li style={{paddingLeft: '12px'}}>④キーパーへの激しい接触</li>
-              <li style={{paddingLeft: '12px'}}>⑤暴言、遅延行為</li>
+              <li style={{paddingLeft: '12px'}}>⑤ゴールになるボールを故意に手を使う</li>
+              <li style={{paddingLeft: '12px'}}>⑥暴言、遅延行為</li>
             </ul>
 
             <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■間違いやすいルール</h2>
@@ -3435,12 +3436,13 @@ function RulesView({ handlePrint, setActiveTab }) {
           <li>・フリーキック時の距離は7m離れる</li>
           <li>・スローイン時の距離は2m離れる</li>
           <li>・キックオフシュートは禁止</li>
-          <li>・禁止事項(🟨(軽度)、 🟥(重度)の提示)</li>
+          <li>・🟨と 🟥の提示 ※程度により色を変える</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>①スライディングでの接触(キーパーを含む)</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>②後ろからの接触</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>③相手が激しく倒れるくらいのショルダーチャージは後ろからでなくてもファールとする</li>
           <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>④キーパーへの激しい接触</li>
-          <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>⑤暴言、遅延行為</li>
+          <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>⑤ゴールになるボールを故意に手を使う</li>
+          <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>⑥暴言、遅延行為</li>
         </ul>
 
         <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■間違いやすいルール</h3>
