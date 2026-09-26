@@ -2681,8 +2681,7 @@ function MasterPickerModal({ isOpen, onClose, teamName, masterPlayers, currentMe
                       {p.referee && <span className="badge-referee">{p.referee}</span>}
                     </div>
                     <div style={{fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 2}}>
-                      {p.birth && <span>生年月日: {p.birth} </span>}
-                      {p.age && <span>({p.age}歳)</span>}
+                      {p.age && <span>{p.age}歳</span>}
                       {p.memo && <span style={{marginLeft: 6, opacity: 0.8}}>※{p.memo}</span>}
                     </div>
                   </div>
@@ -2754,7 +2753,9 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
   const [editingMember, setEditingMember] = useState(null);
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
-  const [editBirth, setEditBirth] = useState('');
+  const [editBirthYear, setEditBirthYear] = useState('');
+  const [editBirthMonth, setEditBirthMonth] = useState('');
+  const [editBirthDay, setEditBirthDay] = useState('');
   const [editAge, setEditAge] = useState('');
   const [editReferee, setEditReferee] = useState('');
   const [editIsNakano, setEditIsNakano] = useState(false);
@@ -2767,6 +2768,60 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
   const currTeamKey = cleanTeamKey(currTeam?.name);
   const currMasterPlayers = masterMembers[currTeamKey] || [];
 
+  // Options for birth date select
+  const currentYear = new Date().getFullYear();
+  const birthYears = [];
+  for (let y = 1940; y <= currentYear - 5; y++) {
+    birthYears.push(y);
+  }
+  const birthMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+  const getDaysInMonth = (y, m) => {
+    if (!m) return 31;
+    const yearNum = y ? parseInt(y, 10) : 2024;
+    const monthNum = parseInt(m, 10);
+    return new Date(yearNum, monthNum, 0).getDate();
+  };
+  const maxDays = getDaysInMonth(editBirthYear, editBirthMonth);
+  const birthDays = Array.from({ length: maxDays }, (_, i) => i + 1);
+
+  const parseBirthParts = (str) => {
+    if (!str) return { year: '', month: '', day: '' };
+    const clean = String(str).replace(/[年月日]/g, '/').replace(/-/g, '/');
+    const parts = clean.split('/').map(p => p.trim()).filter(Boolean);
+    const y = parts[0] || '';
+    const m = parts[1] ? String(parseInt(parts[1], 10)) : '';
+    const d = parts[2] ? String(parseInt(parts[2], 10)) : '';
+    return { year: y, month: m, day: d };
+  };
+
+  const handleBirthDateChange = (newYear, newMonth, newDay) => {
+    setEditBirthYear(newYear);
+    setEditBirthMonth(newMonth);
+    setEditBirthDay(newDay);
+
+    // Auto-calculate age if year is provided
+    if (newYear) {
+      const y = parseInt(newYear, 10);
+      const m = newMonth ? parseInt(newMonth, 10) : 1;
+      const d = newDay ? parseInt(newDay, 10) : 1;
+      if (!isNaN(y)) {
+        const today = new Date();
+        let calculatedAge = today.getFullYear() - y;
+        const curMonth = today.getMonth() + 1;
+        const curDay = today.getDate();
+        if (newMonth) {
+          if (curMonth < m || (curMonth === m && curDay < d)) {
+            calculatedAge--;
+          }
+        }
+        if (calculatedAge >= 0 && calculatedAge < 120) {
+          setEditAge(String(calculatedAge));
+        }
+      }
+    }
+  };
+
   const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => {
     if (a.id === editingMember) return -1;
     if (b.id === editingMember) return 1;
@@ -2778,16 +2833,13 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
     setEditingMember(member.id);
     setEditName(member.name);
     setEditNumber(member.number || '');
-    setEditBirth(member.birth || '');
-    setEditAge(member.age || '');
+    const { year, month, day } = parseBirthParts(member.birth);
+    setEditBirthYear(year);
+    setEditBirthMonth(month);
+    setEditBirthDay(day);
+    setEditAge(member.age !== undefined && member.age !== null && member.age !== '' ? String(member.age) : (member.birth ? String(calculateAgeFromBirth(member.birth)) : ''));
     setEditReferee(member.referee || '');
     setEditIsNakano(member.isNakano || member.isResident || member.isWorker || false);
-  };
-
-  const handleBirthChange = (val) => {
-    setEditBirth(val);
-    const calcAge = calculateAgeFromBirth(val);
-    if (calcAge) setEditAge(calcAge);
   };
 
   const handleNameChange = (val) => {
@@ -2796,12 +2848,15 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
     if (matched) {
       if (matched.number && !editNumber) setEditNumber(matched.number);
       if (matched.birth) {
-        setEditBirth(matched.birth);
+        const { year, month, day } = parseBirthParts(matched.birth);
+        setEditBirthYear(year);
+        setEditBirthMonth(month);
+        setEditBirthDay(day);
         const a = calculateAgeFromBirth(matched.birth);
-        if (a) setEditAge(a);
-        else if (matched.age) setEditAge(matched.age);
+        if (a) setEditAge(String(a));
+        else if (matched.age) setEditAge(String(matched.age));
       } else if (matched.age && !editAge) {
-        setEditAge(matched.age);
+        setEditAge(String(matched.age));
       }
       if (matched.referee) setEditReferee(matched.referee);
       if (typeof matched.isNakano === 'boolean') setEditIsNakano(matched.isNakano);
@@ -2809,11 +2864,20 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
   };
 
   const saveEdit = (id) => {
+    let fullBirth = '';
+    if (editBirthYear && editBirthMonth && editBirthDay) {
+      fullBirth = `${editBirthYear}/${String(editBirthMonth).padStart(2, '0')}/${String(editBirthDay).padStart(2, '0')}`;
+    } else if (editBirthYear && editBirthMonth) {
+      fullBirth = `${editBirthYear}/${String(editBirthMonth).padStart(2, '0')}`;
+    } else if (editBirthYear) {
+      fullBirth = String(editBirthYear);
+    }
+
     const updatedMember = {
       name: editName.trim(),
       number: editNumber.trim(),
-      birth: editBirth.trim(),
-      age: editAge ? parseInt(editAge, 10) : '',
+      birth: fullBirth,
+      age: editAge ? parseInt(editAge, 10) : (fullBirth ? calculateAgeFromBirth(fullBirth) : ''),
       referee: editReferee.trim(),
       isNakano: editIsNakano,
       isResident: false,
@@ -2832,7 +2896,7 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
         newMasterList[existingMasterIdx] = {
           ...newMasterList[existingMasterIdx],
           number: editNumber.trim() || newMasterList[existingMasterIdx].number,
-          birth: editBirth.trim() || newMasterList[existingMasterIdx].birth,
+          birth: fullBirth || newMasterList[existingMasterIdx].birth,
           age: editAge ? parseInt(editAge, 10) : newMasterList[existingMasterIdx].age,
           referee: editReferee.trim() || newMasterList[existingMasterIdx].referee,
           isNakano: editIsNakano
@@ -2844,7 +2908,7 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
             id: 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
             number: editNumber.trim(),
             name: editName.trim(),
-            birth: editBirth.trim(),
+            birth: fullBirth,
             age: editAge ? parseInt(editAge, 10) : '',
             referee: editReferee.trim(),
             isNakano: editIsNakano,
@@ -2876,7 +2940,9 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
     setEditingMember(newId);
     setEditName('');
     setEditNumber('');
-    setEditBirth('');
+    setEditBirthYear('');
+    setEditBirthMonth('');
+    setEditBirthDay('');
     setEditAge('');
     setEditReferee('');
     setEditIsNakano(false);
@@ -3139,26 +3205,74 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
                     <datalist id="team-master-names">
                       {currMasterPlayers.map(p => (
                         <option key={p.id || p.name} value={p.name}>
-                          No.{p.number || '-'} {p.birth ? `(${p.birth})` : ''} {p.referee || ''}
+                          No.{p.number || '-'} {p.age ? `(${p.age}歳)` : ''} {p.referee || ''}
                         </option>
                       ))}
                     </datalist>
-                    <input 
-                      type="text" 
-                      value={editBirth} 
-                      onChange={e => handleBirthChange(e.target.value)}
-                      placeholder="生年月日 (例: 1980/05/12)"
-                      className="edit-input"
-                      style={{flex: '1 1 140px', minWidth: 120}}
-                    />
-                    <input 
-                      type="number" 
-                      value={editAge} 
-                      onChange={e => setEditAge(e.target.value)}
-                      placeholder="年齢"
-                      className="edit-input"
-                      style={{width: 60, flexShrink: 0}}
-                    />
+
+                    {/* 生年月日 選択式 (年・月・日) */}
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      background: 'var(--item-sub-bg)',
+                      padding: '2px 8px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-subtle)'
+                    }}>
+                      <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap'}}>生年月日:</span>
+                      <select
+                        value={editBirthYear}
+                        onChange={e => handleBirthDateChange(e.target.value, editBirthMonth, editBirthDay)}
+                        className="edit-input"
+                        style={{width: 84, padding: '4px 2px', fontSize: '0.82rem'}}
+                        title="生年月日の年"
+                      >
+                        <option value="">(年)</option>
+                        {birthYears.map(y => (
+                          <option key={y} value={y}>{y}年</option>
+                        ))}
+                      </select>
+                      <select
+                        value={editBirthMonth}
+                        onChange={e => handleBirthDateChange(editBirthYear, e.target.value, editBirthDay)}
+                        className="edit-input"
+                        style={{width: 64, padding: '4px 2px', fontSize: '0.82rem'}}
+                        title="生年月日の月"
+                      >
+                        <option value="">(月)</option>
+                        {birthMonths.map(m => (
+                          <option key={m} value={m}>{m}月</option>
+                        ))}
+                      </select>
+                      <select
+                        value={editBirthDay}
+                        onChange={e => handleBirthDateChange(editBirthYear, editBirthMonth, e.target.value)}
+                        className="edit-input"
+                        style={{width: 64, padding: '4px 2px', fontSize: '0.82rem'}}
+                        title="生年月日の日"
+                      >
+                        <option value="">(日)</option>
+                        {birthDays.map(d => (
+                          <option key={d} value={d}>{d}日</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* 年齢 (生年月日から自動反映、手動変更も可能) */}
+                    <div style={{display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                      <input 
+                        type="number" 
+                        value={editAge} 
+                        onChange={e => setEditAge(e.target.value)}
+                        placeholder="年齢"
+                        className="edit-input"
+                        style={{width: 65, flexShrink: 0}}
+                        title="生年月日から自動反映されます（手動変更も可能）"
+                      />
+                      <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>歳</span>
+                    </div>
+
                     <select 
                       value={editReferee} 
                       onChange={e => setEditReferee(e.target.value)}
@@ -3190,8 +3304,7 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
                     color: checkMode && member.checked ? 'var(--checked-text)' : 'inherit'
                   }}>
                     {member.name}
-                    {member.birth && <span style={{marginLeft: 8, fontSize: '0.8rem', color: 'var(--text-secondary)'}}>{member.birth}</span>}
-                    {member.age && <span style={{marginLeft: 6, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
+                    {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
                     {!checkMode && member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', padding: '2px 6px', borderRadius: 4, color: 'var(--pill-text)'}}>{member.referee}</span>}
                     {!checkMode && (member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                   </div>
