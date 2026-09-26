@@ -1856,7 +1856,8 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
 
             <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■ルール概要(通常サッカーとの差異)</h2>
             <ul style={{listStyle: 'none', paddingLeft: '8px', marginBottom: '12px'}}>
-              <li>・フリーキック時は、壁の人数に関わらず攻撃側は壁から1m離れる(キック時に離れていなければファールとして笛を吹く)</li>
+              <li>・フリーキック時は攻撃は壁から1m離れる</li>
+              <li style={{paddingLeft: '12px', color: '#666'}}>※壁の人数に関わらず。再開は間接FK</li>
               <li>・フリーキック時の距離は7m離れる</li>
               <li>・スローイン時の距離は2m離れる</li>
               <li>・キックオフシュートは禁止</li>
@@ -3432,7 +3433,8 @@ function RulesView({ handlePrint, setActiveTab }) {
 
         <h3 style={{fontSize: '1.1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 12, color: 'var(--accent-color)'}}>■ルール概要(通常サッカーとの差異)</h3>
         <ul style={{listStyle: 'none', paddingLeft: 0, marginBottom: 24}}>
-          <li>・フリーキック時は、壁の人数に関わらず攻撃側は壁から1m離れる(キック時に離れていなければファールとして笛を吹く)</li>
+          <li>・フリーキック時は攻撃は壁から1m離れる</li>
+          <li style={{paddingLeft: 16, color: 'var(--text-secondary)'}}>※壁の人数に関わらず。再開は間接FK</li>
           <li>・フリーキック時の距離は7m離れる</li>
           <li>・スローイン時の距離は2m離れる</li>
           <li>・キックオフシュートは禁止</li>
