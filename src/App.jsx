@@ -6,7 +6,7 @@ import { ensureAuth, auth } from './firebase';
 import './index.css';
 
 // Firebase Realtime Database URL
-const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20260927';
+const FIREBASE_BASE_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/nakanofa_20261011';
 const FIREBASE_MASTER_URL = 'https://nakanofa-tournament-2026-default-rtdb.asia-southeast1.firebasedatabase.app/team_master_members';
 
 // Sanitize team name for Firebase RTDB keys (prohibits '.', '$', '#', '[', ']', '/')
@@ -99,6 +99,19 @@ function App() {
     }
   };
 
+  const saveTeamsToCloud = async (updatedTeams) => {
+    try {
+      const res = await authedFetch(`${FIREBASE_BASE_URL}/teams.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTeams)
+      });
+      if (!res.ok) console.error('Failed to save teams:', res.statusText);
+    } catch (err) {
+      console.error('Failed to save teams to cloud:', err);
+    }
+  };
+
   const saveTeamMasterToCloud = async (teamKey, teamPlayers) => {
     try {
       const res = await authedFetch(`${FIREBASE_MASTER_URL}/${encodeURIComponent(teamKey)}.json`, {
@@ -159,14 +172,16 @@ function App() {
         localStorage.removeItem('soccer_members_v2');
 
         // Fetch from Firebase
-        const [resMatches, resMembers, resMaster] = await Promise.all([
+        const [resMatches, resMembers, resMaster, resTeams] = await Promise.all([
           authedFetch(`${FIREBASE_BASE_URL}/matches.json`),
           authedFetch(`${FIREBASE_BASE_URL}/members.json`),
-          authedFetch(`${FIREBASE_MASTER_URL}.json`)
+          authedFetch(`${FIREBASE_MASTER_URL}.json`),
+          authedFetch(`${FIREBASE_BASE_URL}/teams.json`)
         ]);
 
         let finalMatches = initialMatches;
         let finalMembers = initialMembers;
+        let finalTeams = initialTeams;
 
         if (resMatches.ok) {
           const cloudMatches = await resMatches.json();
@@ -190,6 +205,17 @@ function App() {
           await saveMembersToCloud(initialMembers);
         }
 
+        if (resTeams && resTeams.ok) {
+          const cloudTeams = await resTeams.json();
+          if (Array.isArray(cloudTeams) && cloudTeams.length > 0) {
+            finalTeams = cloudTeams;
+          } else {
+            await saveTeamsToCloud(initialTeams);
+          }
+        } else {
+          await saveTeamsToCloud(initialTeams);
+        }
+
         if (resMaster.ok) {
           const cloudMaster = await resMaster.json();
           if (cloudMaster && typeof cloudMaster === 'object' && Object.keys(cloudMaster).length > 0) {
@@ -205,6 +231,7 @@ function App() {
 
         setMatches(finalMatches);
         setMembers(finalMembers);
+        setTeams(finalTeams);
       } catch (err) {
         console.error('Failed to load from Firebase:', err);
       } finally {
@@ -222,10 +249,11 @@ function App() {
       if (isLoading) return;
 
       try {
-        const [resMatches, resMembers, resMaster] = await Promise.all([
+        const [resMatches, resMembers, resMaster, resTeams] = await Promise.all([
           authedFetch(`${FIREBASE_BASE_URL}/matches.json`),
           authedFetch(`${FIREBASE_BASE_URL}/members.json`),
-          authedFetch(`${FIREBASE_MASTER_URL}.json`)
+          authedFetch(`${FIREBASE_MASTER_URL}.json`),
+          authedFetch(`${FIREBASE_BASE_URL}/teams.json`)
         ]);
 
         if (resMatches.ok) {
@@ -239,6 +267,13 @@ function App() {
           const cloudMembers = await resMembers.json();
           if (Array.isArray(cloudMembers) && cloudMembers.length > 0) {
             setMembers(cloudMembers);
+          }
+        }
+
+        if (resTeams && resTeams.ok) {
+          const cloudTeams = await resTeams.json();
+          if (Array.isArray(cloudTeams) && cloudTeams.length > 0) {
+            setTeams(cloudTeams);
           }
         }
 
@@ -568,7 +603,7 @@ function App() {
       {/* Header */}
       <header className="header no-print">
         <div style={{flex: 1}}>
-          <h1 style={{color: 'var(--text-primary)'}}>9/27(日)中野区ミニサッカー シニア大会@本五ふれあい公園</h1>
+          <h1 style={{color: 'var(--text-primary)'}}>10/11(日)中野区ミニサッカー 一般大会@白鷺せせらぎ公園</h1>
           <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
             <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
               <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
@@ -1741,7 +1776,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
           <div className="print-page">
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年9月27日（日）　会場：本五ふれあい公園</p>
+          <p>開催日：2026年10月11日（日）　会場：白鷺せせらぎ公園</p>
         </div>
         <div className="print-grid">
           {leagueMatches.slice(0, 4).map(renderMatchCard)}
@@ -1752,7 +1787,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>予選リーグ {printMode === 'result' ? '試合結果' : '記録用紙'}（続き）/ 星取表・集計表 {printMode === 'result' ? '(結果)' : ''}</h1>
-          <p>開催日：2026年9月27日（日）　会場：本五ふれあい公園</p>
+          <p>開催日：2026年10月11日（日）　会場：白鷺せせらぎ公園</p>
         </div>
         <div className="print-grid">
           {leagueMatches.slice(4).map(renderMatchCard)}
@@ -1827,7 +1862,7 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
       <div className="print-page" style={{pageBreakBefore: 'always'}}>
         <div className="print-title">
           <h1>決勝トーナメント {printMode === 'result' ? '試合結果' : '記録用紙'}</h1>
-          <p>開催日：2026年9月27日（日）　会場：本五ふれあい公園</p>
+          <p>開催日：2026年10月11日（日）　会場：白鷺せせらぎ公園</p>
         </div>
         <div className="print-grid">
           {knockoutMatches.map(renderMatchCard)}
@@ -1842,8 +1877,8 @@ function PrintScorecard({ matches, getTeam, getPlayer, standings, printMode }) {
         <div className="print-page" style={{padding: '10mm'}}>
           {/* Page 4: Rules */}
           <div className="print-title" style={{marginBottom: '8mm'}}>
-            <h1>中野区ミニサッカー シニア大会のルール</h1>
-            <p>※2026年9月27日更新</p>
+            <h1>中野区ミニサッカー 一般大会のルール</h1>
+            <p>※2026年10月11日更新</p>
           </div>
           <div style={{fontSize: '10pt', lineHeight: '1.6'}}>
             <h2 style={{fontSize: '12pt', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px'}}>■基本情報</h2>
