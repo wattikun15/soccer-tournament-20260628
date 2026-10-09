@@ -416,7 +416,7 @@ function App() {
 
   const handleCancelRoster = () => {
     if (hasRosterChanges()) {
-      if (!window.confirm('修正中のデータがありますが、破棄して閉じますか？')) {
+      if (!window.confirm('変更を破棄しますか？')) {
         return;
       }
     }
@@ -3121,7 +3121,7 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
 
   const handleCancelCheck = () => {
     if (hasCheckChanges()) {
-      if (!window.confirm('修正中のデータがありますが、破棄して閉じますか？')) {
+      if (!window.confirm('変更を破棄しますか？')) {
         return;
       }
     }
