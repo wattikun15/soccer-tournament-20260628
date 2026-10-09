@@ -62,6 +62,78 @@ async function authedFetch(url, options) {
   return fetch(authedUrl, options);
 }
 
+// アプリ内確認モーダル (ブラウザ標準のconfirmと異なり、上部にURL等が表示されません)
+function ConfirmModal({ isOpen, message = '変更を破棄しますか？', onConfirm, onCancel }) {
+  if (!isOpen) return null;
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.75)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100000,
+        padding: 20
+      }}
+      onClick={(e) => { e.stopPropagation(); onCancel(); }}
+    >
+      <div
+        className="glass-card"
+        style={{
+          maxWidth: 320,
+          width: '100%',
+          padding: '24px 20px',
+          borderRadius: 16,
+          background: 'var(--glass-bg)',
+          border: '1px solid var(--glass-border)',
+          boxShadow: 'var(--card-shadow)',
+          textAlign: 'center'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{fontSize: '2rem', marginBottom: 8}}>⚠️</div>
+        <h3 style={{fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: 20, fontWeight: 'bold'}}>
+          {message}
+        </h3>
+        <div style={{display: 'flex', gap: 10, justifyContent: 'center'}}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{
+              flex: 1, padding: '10px 14px', fontSize: '0.9rem', borderRadius: 8, cursor: 'pointer',
+              background: 'var(--pill-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)'
+            }}
+            onClick={onCancel}
+          >
+            キャンセル
+          </button>
+          <button
+            type="button"
+            className="btn"
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              fontSize: '0.9rem',
+              borderRadius: 8,
+              cursor: 'pointer',
+              background: '#ef4444',
+              color: '#ffffff',
+              border: 'none',
+              fontWeight: 'bold'
+            }}
+            onClick={onConfirm}
+          >
+            破棄する
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('schedule');
   const [matches, setMatches] = useState(initialMatches);
@@ -74,6 +146,7 @@ function App() {
   const isAdmin = true;
   const [rosterTeamId, setRosterTeamId] = useState(null);
   const [rosterDraft, setRosterDraft] = useState(null);
+  const [showRosterDiscardConfirm, setShowRosterDiscardConfirm] = useState(false);
   const [showGoalTeamPicker, setShowGoalTeamPicker] = useState(false);
   const [showCardTeamPicker, setShowCardTeamPicker] = useState(null);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -416,9 +489,8 @@ function App() {
 
   const handleCancelRoster = () => {
     if (hasRosterChanges()) {
-      if (!window.confirm('変更を破棄しますか？')) {
-        return;
-      }
+      setShowRosterDiscardConfirm(true);
+      return;
     }
     setRosterTeamId(null);
     setRosterDraft(null);
@@ -817,6 +889,18 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* メンバー出欠確認の変更破棄確認モーダル */}
+      <ConfirmModal
+        isOpen={showRosterDiscardConfirm}
+        message="変更を破棄しますか？"
+        onConfirm={() => {
+          setShowRosterDiscardConfirm(false);
+          setRosterTeamId(null);
+          setRosterDraft(null);
+        }}
+        onCancel={() => setShowRosterDiscardConfirm(false)}
+      />
 
       {/* Main Content Area */}
       <main className="no-print">
@@ -2932,6 +3016,7 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
   const [editIsNakano, setEditIsNakano] = useState(false);
   const [checkMode, setCheckMode] = useState(false);
   const [checkDraft, setCheckDraft] = useState(null);
+  const [showCheckDiscardConfirm, setShowCheckDiscardConfirm] = useState(false);
   const [deleteMode, setDeleteMode] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
 
@@ -3121,9 +3206,8 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
 
   const handleCancelCheck = () => {
     if (hasCheckChanges()) {
-      if (!window.confirm('変更を破棄しますか？')) {
-        return;
-      }
+      setShowCheckDiscardConfirm(true);
+      return;
     }
     setCheckMode(false);
     setCheckDraft(null);
@@ -3613,6 +3697,18 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
         masterPlayers={currMasterPlayers}
         currentMembers={teamMembers}
         onAddPlayers={handleAddFromMaster}
+      />
+
+      {/* チェックモードの変更破棄確認モーダル */}
+      <ConfirmModal
+        isOpen={showCheckDiscardConfirm}
+        message="変更を破棄しますか？"
+        onConfirm={() => {
+          setShowCheckDiscardConfirm(false);
+          setCheckMode(false);
+          setCheckDraft(null);
+        }}
+        onCancel={() => setShowCheckDiscardConfirm(false)}
       />
     </div>
   );
