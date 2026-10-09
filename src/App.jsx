@@ -33,6 +33,26 @@ export function calculateAgeFromBirth(birthStr) {
   return age >= 0 && age < 120 ? age : '';
 }
 
+// メンバーチェック状態の取得: 'none' (未確認) | 'present' (出席) | 'absent' (休み)
+export function getMemberCheckStatus(member) {
+  if (!member) return 'none';
+  if (member.isAbsent || member.status === 'absent') return 'absent';
+  if (member.checked || member.status === 'present') return 'present';
+  return 'none';
+}
+
+// 案1: 3段階タップ循環 (未確認 ➡️ 出席 ➡️ 休み ➡️ 未確認)
+export function cycleMemberCheckStatus(member) {
+  const current = getMemberCheckStatus(member);
+  if (current === 'none') {
+    return { ...member, checked: true, isAbsent: false, status: 'present' };
+  } else if (current === 'present') {
+    return { ...member, checked: false, isAbsent: true, status: 'absent' };
+  } else {
+    return { ...member, checked: false, isAbsent: false, status: 'none' };
+  }
+}
+
 // Fetch wrapper that signs in anonymously and attaches the auth token
 // required by the Realtime Database rules.
 async function authedFetch(url, options) {
@@ -53,6 +73,7 @@ function App() {
   const [printMode, setPrintMode] = useState('blank');
   const isAdmin = true;
   const [rosterTeamId, setRosterTeamId] = useState(null);
+  const [rosterDraft, setRosterDraft] = useState(null);
   const [showGoalTeamPicker, setShowGoalTeamPicker] = useState(false);
   const [showCardTeamPicker, setShowCardTeamPicker] = useState(null);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -380,8 +401,35 @@ function App() {
 
   const closeModal = handleCloseAttempt;
 
-  const closeRosterModal = () => {
+  const openRosterModal = (teamId) => {
+    setRosterTeamId(teamId);
+    setRosterDraft(members);
+  };
+
+  const hasRosterChanges = () => {
+    if (!rosterDraft) return false;
+    return rosterDraft.some(dm => {
+      const orig = members.find(m => m.id === dm.id);
+      return orig ? getMemberCheckStatus(orig) !== getMemberCheckStatus(dm) : false;
+    });
+  };
+
+  const handleCancelRoster = () => {
+    if (hasRosterChanges()) {
+      if (!window.confirm('修正中のデータがありますが、破棄して閉じますか？')) {
+        return;
+      }
+    }
     setRosterTeamId(null);
+    setRosterDraft(null);
+  };
+
+  const handleSaveRoster = () => {
+    if (rosterDraft && hasRosterChanges()) {
+      handleSetMembers(rosterDraft);
+    }
+    setRosterTeamId(null);
+    setRosterDraft(null);
   };
 
   const addGoal = (teamId) => {
@@ -606,10 +654,15 @@ function App() {
           <h1 style={{color: 'var(--text-primary)'}}>10/11(日)中野区ミニサッカー 一般大会@白鷺せせらぎ公園</h1>
           <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
             <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
-              <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => m.checked).length}</span>名
+              <Users size={14} /> 参加人数合計: <span style={{color: '#4caf50', fontWeight: 'bold'}}>{members.filter(m => getMemberCheckStatus(m) === 'present').length}</span>名
             </span>
+            {members.some(m => getMemberCheckStatus(m) === 'absent') && (
+              <span style={{fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)', padding: '2px 8px', borderRadius: 12, color: '#ef4444', fontWeight: 'bold'}}>
+                休み: {members.filter(m => getMemberCheckStatus(m) === 'absent').length}名
+              </span>
+            )}
             <span style={{fontSize: '0.8rem', background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', padding: '2px 8px', borderRadius: 12, color: 'var(--pill-text)'}}>
-              中野区(在住・在勤): <span style={{color: 'var(--accent-color)', fontWeight: 'bold'}}>{members.filter(m => m.checked && (m.isNakano || m.isResident || m.isWorker)).length}</span>名
+              中野区(在住・在勤): <span style={{color: 'var(--accent-color)', fontWeight: 'bold'}}>{members.filter(m => getMemberCheckStatus(m) === 'present' && (m.isNakano || m.isResident || m.isWorker)).length}</span>名
             </span>
           </div>
         </div>
@@ -639,14 +692,14 @@ function App() {
       {rosterTeamId && (
         <div
           style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16}}
-          onClick={closeRosterModal}
+          onClick={handleCancelRoster}
         >
           <div
             style={{background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', borderRadius: 16, padding: 24, width: 400, maxWidth: '100%', maxHeight: '80vh', overflowY: 'auto', border: '1px solid var(--glass-border)', boxShadow: 'var(--card-shadow)', position: 'relative'}}
             onClick={e => e.stopPropagation()}
           >
             <button
-              onClick={closeRosterModal}
+              onClick={handleCancelRoster}
               style={{
                 position: 'absolute', top: 12, right: 12, background: 'var(--pill-bg)', border: '1px solid var(--glass-border)',
                 color: 'var(--text-primary)', cursor: 'pointer', padding: 6, borderRadius: '50%',
@@ -659,53 +712,104 @@ function App() {
               {getTeam(rosterTeamId)?.emoji} {getTeam(rosterTeamId)?.name} メンバー表
             </h3>
             {(() => {
-              const rosterMembers = members.filter(m => m.teamId === rosterTeamId);
-              const rosterCheckedCount = rosterMembers.filter(m => m.checked).length;
+              const currentRosterList = (rosterDraft || members).filter(m => m.teamId === rosterTeamId);
+              const rosterPresentCount = currentRosterList.filter(m => getMemberCheckStatus(m) === 'present').length;
+              const rosterAbsentCount = currentRosterList.filter(m => getMemberCheckStatus(m) === 'absent').length;
+              const rosterUnconfirmedCount = currentRosterList.length - rosterPresentCount - rosterAbsentCount;
               const toggleRosterCheck = (id) => {
-                handleSetMembers(members.map(m => m.id === id ? { ...m, checked: !m.checked } : m));
+                setRosterDraft(prev => {
+                  const list = prev || members;
+                  return list.map(m => m.id === id ? cycleMemberCheckStatus(m) : m);
+                });
               };
               return (
                 <>
-                  <p style={{textAlign: 'center', marginBottom: 20, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
-                    タップして出欠チェック
-                    <span style={{marginLeft: 6, fontWeight: 'bold', color: rosterCheckedCount === rosterMembers.length && rosterMembers.length > 0 ? '#4caf50' : 'var(--accent-color)'}}>
-                      {rosterCheckedCount} / {rosterMembers.length} 名
-                    </span>
-                  </p>
+                  <div style={{textAlign: 'center', marginBottom: 14}}>
+                    <p style={{fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 6}}>
+                      💡 タップで切替: 未確認 ➡️ 出席 ➡️ 休み
+                    </p>
+                    <div style={{display: 'flex', justifyContent: 'center', gap: 10, fontSize: '0.85rem', flexWrap: 'wrap'}}>
+                      <span style={{color: '#4caf50', fontWeight: 'bold'}}>
+                        ✅ 出席 {rosterPresentCount}名
+                      </span>
+                      {rosterAbsentCount > 0 && (
+                        <span style={{color: '#ef4444', fontWeight: 'bold'}}>
+                          💤 休み {rosterAbsentCount}名
+                        </span>
+                      )}
+                      {rosterUnconfirmedCount > 0 && (
+                        <span style={{color: 'var(--text-secondary)'}}>
+                          未確認 {rosterUnconfirmedCount}名
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
-                    {rosterMembers.length === 0 && (
+                    {currentRosterList.length === 0 && (
                       <p style={{color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0'}}>メンバーが登録されていません</p>
                     )}
-                    {rosterMembers
+                    {currentRosterList
                       .sort((a, b) => Number(a.number) - Number(b.number))
-                      .map(member => (
-                        <div
-                          key={member.id}
-                          onClick={() => toggleRosterCheck(member.id)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 16,
-                            background: member.checked ? 'var(--checked-bg)' : 'var(--item-sub-bg)',
-                            border: member.checked ? '1px solid var(--checked-border)' : '1px solid var(--border-subtle)',
-                            padding: '10px 14px', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s'
-                          }}
-                        >
-                          <div style={{
-                            width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                            border: `2px solid ${member.checked ? 'var(--accent-color)' : 'var(--border-subtle)'}`,
-                            background: member.checked ? 'var(--accent-color)' : 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}>
-                            {member.checked && <Check size={14} color="#fff" />}
+                      .map(member => {
+                        const status = getMemberCheckStatus(member);
+                        const isPresent = status === 'present';
+                        const isAbsent = status === 'absent';
+                        return (
+                          <div
+                            key={member.id}
+                            onClick={() => toggleRosterCheck(member.id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 16,
+                              background: isPresent ? 'var(--checked-bg)' : isAbsent ? 'rgba(239, 68, 68, 0.08)' : 'var(--item-sub-bg)',
+                              border: isPresent ? '1px solid var(--checked-border)' : isAbsent ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid var(--border-subtle)',
+                              padding: '10px 14px', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                              opacity: isAbsent ? 0.78 : 1
+                            }}
+                          >
+                            <div style={{
+                              width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                              border: `2px solid ${isPresent ? 'var(--accent-color)' : isAbsent ? '#ef4444' : 'var(--border-subtle)'}`,
+                              background: isPresent ? 'var(--accent-color)' : isAbsent ? '#ef4444' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                              {isPresent && <Check size={14} color="#fff" />}
+                              {isAbsent && <X size={14} color="#fff" />}
+                            </div>
+                            <div style={{width: 32, color: isPresent ? '#4caf50' : isAbsent ? '#ef4444' : 'var(--text-secondary)', fontWeight: 'bold'}}>{member.number}</div>
+                            <div style={{flex: 1, color: isPresent ? 'var(--checked-text)' : isAbsent ? '#ef4444' : 'var(--text-primary)', fontWeight: isPresent || isAbsent ? '600' : 'normal', textDecoration: isAbsent ? 'line-through' : 'none'}}>
+                              {member.name}
+                              {isPresent && (
+                                <span style={{marginLeft: 8, fontSize: '0.72rem', background: 'var(--checked-bg)', border: '1px solid var(--checked-border)', padding: '2px 6px', borderRadius: 4, color: 'var(--checked-text)', fontWeight: 'bold'}}>出席</span>
+                              )}
+                              {isAbsent && (
+                                <span style={{marginLeft: 8, fontSize: '0.72rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', padding: '2px 6px', borderRadius: 4, color: '#ef4444', fontWeight: 'bold', textDecoration: 'none', display: 'inline-block'}}>休み</span>
+                              )}
+                              {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: 'var(--text-secondary)', textDecoration: 'none'}}>{member.age}歳</span>}
+                              {member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', padding: '2px 6px', borderRadius: 4, color: 'var(--pill-text)', textDecoration: 'none'}}>{member.referee}</span>}
+                              {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold', textDecoration: 'none'}}>中野</span>}
+                            </div>
                           </div>
-                          <div style={{width: 32, color: 'var(--text-secondary)', fontWeight: 'bold'}}>{member.number}</div>
-                          <div style={{flex: 1, color: member.checked ? 'var(--checked-text)' : 'var(--text-primary)', fontWeight: member.checked ? '600' : 'normal'}}>
-                            {member.name}
-                            {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: 'var(--text-secondary)'}}>{member.age}歳</span>}
-                            {member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', padding: '2px 6px', borderRadius: 4, color: 'var(--pill-text)'}}>{member.referee}</span>}
-                            {(member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
+                  </div>
+
+                  {/* 更新 ボタン */}
+                  <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--glass-border)'}}>
+                    <button
+                      onClick={handleSaveRoster}
+                      className="btn btn-primary"
+                      style={{
+                        padding: '8px 22px',
+                        width: 'auto',
+                        marginBottom: 0,
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '0.88rem'
+                      }}
+                    >
+                      更新
+                    </button>
                   </div>
                 </>
               );
@@ -861,14 +965,14 @@ function App() {
                     <div
                       className="team-logo"
                       style={{width: 64, height: 64, fontSize: '2rem', cursor: selectedMatch.homeId ? 'pointer' : 'default'}}
-                      onClick={() => selectedMatch.homeId && setRosterTeamId(selectedMatch.homeId)}
+                      onClick={() => selectedMatch.homeId && openRosterModal(selectedMatch.homeId)}
                     >
                       {homeTeam?.emoji || '❓'}
                     </div>
                     <div
                       className="team-name"
                       style={{cursor: selectedMatch.homeId ? 'pointer' : 'default', textDecoration: selectedMatch.homeId ? 'underline dotted' : 'none'}}
-                      onClick={() => selectedMatch.homeId && setRosterTeamId(selectedMatch.homeId)}
+                      onClick={() => selectedMatch.homeId && openRosterModal(selectedMatch.homeId)}
                     >
                       {homeTeam?.name || '未定'}
                     </div>
@@ -884,14 +988,14 @@ function App() {
                     <div
                       className="team-logo"
                       style={{width: 64, height: 64, fontSize: '2rem', cursor: selectedMatch.awayId ? 'pointer' : 'default'}}
-                      onClick={() => selectedMatch.awayId && setRosterTeamId(selectedMatch.awayId)}
+                      onClick={() => selectedMatch.awayId && openRosterModal(selectedMatch.awayId)}
                     >
                       {awayTeam?.emoji || '❓'}
                     </div>
                     <div
                       className="team-name"
                       style={{cursor: selectedMatch.awayId ? 'pointer' : 'default', textDecoration: selectedMatch.awayId ? 'underline dotted' : 'none'}}
-                      onClick={() => selectedMatch.awayId && setRosterTeamId(selectedMatch.awayId)}
+                      onClick={() => selectedMatch.awayId && openRosterModal(selectedMatch.awayId)}
                     >
                       {awayTeam?.name || '未定'}
                     </div>
@@ -2827,7 +2931,7 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
   const [editReferee, setEditReferee] = useState('');
   const [editIsNakano, setEditIsNakano] = useState(false);
   const [checkMode, setCheckMode] = useState(false);
-  const [checkBackup, setCheckBackup] = useState(null);
+  const [checkDraft, setCheckDraft] = useState(null);
   const [deleteMode, setDeleteMode] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
 
@@ -2869,12 +2973,16 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
     setEditBirth('');
   };
 
-  const teamMembers = members.filter(m => m.teamId === selectedTeam).sort((a, b) => {
+  const currentMembers = checkMode && checkDraft ? checkDraft : members;
+  const teamMembers = currentMembers.filter(m => m.teamId === selectedTeam).sort((a, b) => {
     if (a.id === editingMember) return -1;
     if (b.id === editingMember) return 1;
     return Number(a.number) - Number(b.number);
   });
-  const checkedCount = teamMembers.filter(m => m.checked).length;
+  const presentCount = teamMembers.filter(m => getMemberCheckStatus(m) === 'present').length;
+  const absentCount = teamMembers.filter(m => getMemberCheckStatus(m) === 'absent').length;
+  const unconfirmedCount = teamMembers.length - presentCount - absentCount;
+  const checkedCount = presentCount;
 
   const startEdit = (member) => {
     setEditingMember(member.id);
@@ -2997,13 +3105,51 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
     setMembers([...members, ...newMembers]);
   };
 
+  const hasCheckChanges = () => {
+    if (!checkDraft) return false;
+    return checkDraft.some(dm => {
+      const orig = members.find(m => m.id === dm.id);
+      return orig ? getMemberCheckStatus(orig) !== getMemberCheckStatus(dm) : false;
+    });
+  };
+
+  const startCheckMode = () => {
+    setCheckDraft(members);
+    setCheckMode(true);
+    setEditingMember(null);
+  };
+
+  const handleCancelCheck = () => {
+    if (hasCheckChanges()) {
+      if (!window.confirm('修正中のデータがありますが、破棄して閉じますか？')) {
+        return;
+      }
+    }
+    setCheckMode(false);
+    setCheckDraft(null);
+  };
+
+  const handleSaveChecks = () => {
+    if (checkDraft && hasCheckChanges()) {
+      setMembers(checkDraft);
+    }
+    setCheckMode(false);
+    setCheckDraft(null);
+  };
+
   const toggleCheck = (id) => {
-    setMembers(members.map(m => m.id === id ? { ...m, checked: !m.checked } : m));
+    setCheckDraft(prev => {
+      const list = prev || members;
+      return list.map(m => m.id === id ? cycleMemberCheckStatus(m) : m);
+    });
   };
 
   const resetChecks = () => {
     if (window.confirm('このチームの全チェックをリセットしますか？')) {
-      setMembers(members.map(m => m.teamId === selectedTeam ? { ...m, checked: false } : m));
+      setCheckDraft(prev => {
+        const list = prev || members;
+        return list.map(m => m.teamId === selectedTeam ? { ...m, checked: false, isAbsent: false, status: 'none' } : m);
+      });
     }
   };
 
@@ -3070,43 +3216,31 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
               </button>
             )}
             {!editingMember && isAdmin && !deleteMode && (
-              <>
+              <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
                 {checkMode && (
                   <button
-                    onClick={() => {
-                      if (checkBackup) {
-                        setMembers(checkBackup);
-                      }
-                      setCheckMode(false);
-                      setCheckBackup(null);
-                    }}
+                    onClick={handleCancelCheck}
                     style={{
-                      padding: '8px 14px',
+                      padding: '8px 12px',
                       borderRadius: 8,
                       border: '1px solid var(--glass-border)',
                       cursor: 'pointer',
                       fontWeight: 'bold',
                       fontSize: '0.85rem',
                       background: 'var(--glass-bg)',
-                      color: 'var(--text-secondary)'
+                      color: 'var(--text-secondary)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
+                    title="メンバーチェックを閉じる"
+                    aria-label="閉じる"
                   >
-                    ❌ キャンセル
+                    <X size={16} />
                   </button>
                 )}
                 <button
-                  onClick={() => {
-                    if (!checkMode) {
-                      setCheckBackup(members);
-                      setCheckMode(true);
-                      setEditingMember(null);
-                    } else {
-                      setCheckMode(false);
-                      setCheckBackup(null);
-                    }
-                  }}
+                  onClick={checkMode ? handleSaveChecks : startCheckMode}
                   style={{
-                    padding: '8px 14px',
+                    padding: '8px 16px',
                     width: 'auto',
                     marginBottom: 0,
                     borderRadius: 8,
@@ -3119,9 +3253,9 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
                     transition: 'all 0.2s'
                   }}
                 >
-                  {checkMode ? '✅ 完了' : '✅ メンバーチェック'}
+                  {checkMode ? '更新' : '✅ メンバーチェック'}
                 </button>
-              </>
+              </div>
             )}
             {editingMember && (
               <>
@@ -3160,60 +3294,97 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
 
         {/* 進捗バー（常時表示） */}
         <div style={{marginBottom: 16}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
-            <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>登録メンバー</span>
-            <span style={{fontSize: '0.9rem', fontWeight: 'bold', color: checkedCount === teamMembers.length && teamMembers.length > 0 ? '#4caf50' : 'var(--accent-color)'}}>
-              {checkedCount} / {teamMembers.length} 名
-            </span>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6}}>
+            <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>登録メンバー ({teamMembers.length}名)</span>
+            <div style={{display: 'flex', gap: 10, fontSize: '0.85rem', alignItems: 'center', flexWrap: 'wrap'}}>
+              <span style={{color: '#4caf50', fontWeight: 'bold'}}>
+                ✅ 出席 {presentCount}名
+              </span>
+              {absentCount > 0 && (
+                <span style={{color: '#ef4444', fontWeight: 'bold'}}>
+                  💤 休み {absentCount}名
+                </span>
+              )}
+              {unconfirmedCount > 0 && (
+                <span style={{color: 'var(--text-secondary)'}}>
+                  未確認 {unconfirmedCount}名
+                </span>
+              )}
+            </div>
           </div>
-          <div style={{background: 'var(--border-subtle)', borderRadius: 99, height: 8, overflow: 'hidden'}}>
+          <div style={{background: 'var(--border-subtle)', borderRadius: 99, height: 8, overflow: 'hidden', display: 'flex'}}>
             <div style={{
-              background: checkedCount === teamMembers.length && teamMembers.length > 0 ? '#4caf50' : 'var(--accent-color)',
+              background: '#4caf50',
               height: '100%',
-              width: `${teamMembers.length > 0 ? (checkedCount / teamMembers.length) * 100 : 0}%`,
-              borderRadius: 99,
+              width: `${teamMembers.length > 0 ? (presentCount / teamMembers.length) * 100 : 0}%`,
               transition: 'width 0.3s ease'
-            }} />
+            }} title={`出席: ${presentCount}名`} />
+            <div style={{
+              background: '#ef4444',
+              height: '100%',
+              width: `${teamMembers.length > 0 ? (absentCount / teamMembers.length) * 100 : 0}%`,
+              transition: 'width 0.3s ease'
+            }} title={`休み: ${absentCount}名`} />
           </div>
         </div>
+
+        {/* チェックモード中 ガイド */}
+        {checkMode && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 12px', marginBottom: 12, borderRadius: 8,
+            background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)',
+            fontSize: '0.82rem', color: 'var(--text-secondary)'
+          }}>
+            <span>💡</span>
+            <span>タップで切替: <strong>未確認</strong> ➡️ <strong style={{color: '#4caf50'}}>✅ 出席</strong> ➡️ <strong style={{color: '#ef4444'}}>💤 休み</strong> ➡️ <strong>未確認</strong></span>
+          </div>
+        )}
 
         {/* メンバーリスト */}
         <div className="members-list" style={{display: 'flex', flexDirection: 'column', gap: 8}}>
           {teamMembers.length === 0 && <p style={{color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0'}}>メンバーが登録されていません</p>}
           
-          {teamMembers.map(member => (
-            <div
-              key={member.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                background: checkMode && member.checked
-                  ? 'var(--checked-bg)'
-                  : 'var(--item-sub-bg)',
-                border: checkMode && member.checked
-                  ? '1px solid var(--checked-border)'
-                  : '1px solid var(--border-subtle)',
-                padding: '12px 16px',
-                borderRadius: 8,
-                transition: 'all 0.2s',
-                cursor: checkMode ? 'pointer' : 'default'
-              }}
-              onClick={checkMode ? () => toggleCheck(member.id) : undefined}
-            >
-              {/* チェックモード: チェックマーク */}
-              {checkMode && (
-                <div style={{
-                  width: 28, height: 28,
-                  borderRadius: '50%',
-                  border: `2px solid ${member.checked ? 'var(--accent-color)' : 'var(--border-subtle)'}`,
-                  background: member.checked ? 'var(--accent-color)' : 'transparent',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginRight: 12, flexShrink: 0,
-                  transition: 'all 0.2s'
-                }}>
-                  {member.checked && <Check size={16} color="#fff" />}
-                </div>
-              )}
+          {teamMembers.map(member => {
+            const status = getMemberCheckStatus(member);
+            const isPresent = status === 'present';
+            const isAbsent = status === 'absent';
+
+            return (
+              <div
+                key={member.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: checkMode
+                    ? (isPresent ? 'var(--checked-bg)' : isAbsent ? 'rgba(239, 68, 68, 0.08)' : 'var(--item-sub-bg)')
+                    : 'var(--item-sub-bg)',
+                  border: checkMode
+                    ? (isPresent ? '1px solid var(--checked-border)' : isAbsent ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid var(--border-subtle)')
+                    : '1px solid var(--border-subtle)',
+                  padding: '12px 16px',
+                  borderRadius: 8,
+                  transition: 'all 0.2s',
+                  cursor: checkMode ? 'pointer' : 'default',
+                  opacity: checkMode && isAbsent ? 0.78 : 1
+                }}
+                onClick={checkMode ? () => toggleCheck(member.id) : undefined}
+              >
+                {/* チェックモード: 状態マーク */}
+                {checkMode && (
+                  <div style={{
+                    width: 28, height: 28,
+                    borderRadius: '50%',
+                    border: `2px solid ${isPresent ? 'var(--accent-color)' : isAbsent ? '#ef4444' : 'var(--border-subtle)'}`,
+                    background: isPresent ? 'var(--accent-color)' : isAbsent ? '#ef4444' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginRight: 12, flexShrink: 0,
+                    transition: 'all 0.2s'
+                  }}>
+                    {isPresent && <Check size={16} color="#fff" />}
+                    {isAbsent && <X size={16} color="#fff" />}
+                  </div>
+                )}
 
               {/* 編集モード */}
               {!checkMode && editingMember === member.id ? (
@@ -3336,23 +3507,30 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
                 <div style={{display: 'flex', gap: 16, flex: 1, alignItems: 'center'}}>
                   <div style={{
                     width: 36,
-                    color: checkMode && member.checked ? '#4caf50' : 'var(--text-secondary)',
+                    color: checkMode ? (isPresent ? '#4caf50' : isAbsent ? '#ef4444' : 'var(--text-secondary)') : 'var(--text-secondary)',
                     fontWeight: 'bold'
                   }}>{member.number || '-'}</div>
                   <div style={{
                     flex: 1,
-                    fontWeight: checkMode && member.checked ? 'bold' : 'normal',
-                    color: checkMode && member.checked ? 'var(--checked-text)' : 'inherit'
+                    fontWeight: checkMode && (isPresent || isAbsent) ? 'bold' : 'normal',
+                    color: checkMode ? (isPresent ? 'var(--checked-text)' : isAbsent ? '#ef4444' : 'inherit') : 'inherit',
+                    textDecoration: checkMode && isAbsent ? 'line-through' : 'none'
                   }}>
                     {member.name}
-                    {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: checkMode && member.checked ? 'inherit' : 'var(--text-secondary)'}}>{member.age}歳</span>}
+                    {checkMode && isPresent && (
+                      <span style={{marginLeft: 8, fontSize: '0.72rem', background: 'var(--checked-bg)', border: '1px solid var(--checked-border)', padding: '2px 6px', borderRadius: 4, color: 'var(--checked-text)', fontWeight: 'bold'}}>出席</span>
+                    )}
+                    {checkMode && isAbsent && (
+                      <span style={{marginLeft: 8, fontSize: '0.72rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', padding: '2px 6px', borderRadius: 4, color: '#ef4444', fontWeight: 'bold', textDecoration: 'none', display: 'inline-block'}}>休み</span>
+                    )}
+                    {member.age && <span style={{marginLeft: 8, fontSize: '0.85rem', color: checkMode && isPresent ? 'inherit' : 'var(--text-secondary)', textDecoration: 'none'}}>{member.age}歳</span>}
                     {!checkMode && member.referee && <span style={{marginLeft: 8, fontSize: '0.75rem', background: 'var(--pill-bg)', border: '1px solid var(--glass-border)', padding: '2px 6px', borderRadius: 4, color: 'var(--pill-text)'}}>{member.referee}</span>}
                     {!checkMode && (member.isNakano || member.isResident || member.isWorker) && <span style={{marginLeft: 8, fontSize: '0.7rem', background: '#e91e63', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>中野</span>}
                   </div>
                   {!checkMode && (
                     <>
-                      {/* チェック済みバッジ */}
-                      {member.checked && (
+                      {/* 出席バッジ */}
+                      {isPresent && (
                         <div style={{
                           display: 'flex', alignItems: 'center', gap: 3,
                           background: 'var(--checked-bg)',
@@ -3364,7 +3542,23 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
                           fontWeight: 'bold',
                           flexShrink: 0
                         }}>
-                          <Check size={11} /> 確認済
+                          <Check size={11} /> 出席
+                        </div>
+                      )}
+                      {/* 休みバッジ */}
+                      {isAbsent && (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 3,
+                          background: 'rgba(239, 68, 68, 0.12)',
+                          border: '1px solid rgba(239, 68, 68, 0.35)',
+                          borderRadius: 99,
+                          padding: '2px 8px',
+                          fontSize: '0.72rem',
+                          color: '#ef4444',
+                          fontWeight: 'bold',
+                          flexShrink: 0
+                        }}>
+                          <X size={11} /> 休み
                         </div>
                       )}
                       {isAdmin && (
@@ -3386,7 +3580,8 @@ function TeamsView({ teams, members, setMembers, isAdmin, masterMembers = {}, on
                 </div>
               )}
             </div>
-          ))}
+          );
+        })}
         </div>
 
         {/* チェックモード: リセットボタン */}
