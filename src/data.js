@@ -9,14 +9,14 @@ export const initialTeams = [
 export const initialMembers = [];
 
 export const initialMatches = [
-  { id: 'm1', stage: 'league', date: '09:15', homeId: 't1', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第1試合', refereeTeamId: 't2', refereePlayerId: null, goals: [], cards: [] },
-  { id: 'm2', stage: 'league', date: '09:42', homeId: 't2', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第2試合', refereeTeamId: 't3', refereePlayerId: null, goals: [], cards: [] },
-  { id: 'm3', stage: 'league', date: '10:09', homeId: 't1', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第3試合', refereeTeamId: 't2', refereePlayerId: null, goals: [], cards: [] },
-  { id: 'm4', stage: 'league', date: '10:36', homeId: 't2', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第4試合', refereeTeamId: 't4', refereePlayerId: null, goals: [], cards: [] },
-  { id: 'm5', stage: 'league', date: '11:03', homeId: 't3', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第5試合', refereeTeamId: 't1', refereePlayerId: null, goals: [], cards: [] },
-  { id: 'm6', stage: 'league', date: '11:30', homeId: 't1', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第6試合', refereeTeamId: 't3', refereePlayerId: null, goals: [], cards: [] },
-  { id: 'm7', stage: 'third_place', date: '11:59', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '三位決定戦', refereeTeamId: null, refereePlayerId: null, goals: [], cards: [] },
-  { id: 'm8', stage: 'final', date: '12:26', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝戦', refereeTeamId: null, refereePlayerId: null, goals: [], cards: [] }
+  { id: 'm1', stage: 'league', date: '09:15', homeId: 't1', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第1試合', refereeTeamId: 't2', refereePlayerId: null, goals: [], cards: [], fouls: [] },
+  { id: 'm2', stage: 'league', date: '09:42', homeId: 't2', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第2試合', refereeTeamId: 't3', refereePlayerId: null, goals: [], cards: [], fouls: [] },
+  { id: 'm3', stage: 'league', date: '10:09', homeId: 't1', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第3試合', refereeTeamId: 't2', refereePlayerId: null, goals: [], cards: [], fouls: [] },
+  { id: 'm4', stage: 'league', date: '10:36', homeId: 't2', awayId: 't3', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第4試合', refereeTeamId: 't4', refereePlayerId: null, goals: [], cards: [], fouls: [] },
+  { id: 'm5', stage: 'league', date: '11:03', homeId: 't3', awayId: 't4', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第5試合', refereeTeamId: 't1', refereePlayerId: null, goals: [], cards: [], fouls: [] },
+  { id: 'm6', stage: 'league', date: '11:30', homeId: 't1', awayId: 't2', homeScore: 0, awayScore: 0, status: 'scheduled', label: '予選 第6試合', refereeTeamId: 't3', refereePlayerId: null, goals: [], cards: [], fouls: [] },
+  { id: 'm7', stage: 'third_place', date: '11:59', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '三位決定戦', refereeTeamId: null, refereePlayerId: null, goals: [], cards: [], fouls: [] },
+  { id: 'm8', stage: 'final', date: '12:26', homeId: null, awayId: null, homeScore: 0, awayScore: 0, status: 'scheduled', label: '決勝戦', refereeTeamId: null, refereePlayerId: null, goals: [], cards: [], fouls: [] }
 ];
 
 // Helper to calculate standings
@@ -33,6 +33,7 @@ export const calculateStandings = (teams, matches) => {
     yellowCards: 0,
     redCards: 0,
     foulPoints: 0,
+    fouls: 0,
   }));
 
   matches.filter(m => m.stage === 'league' && m.status === 'finished').forEach(match => {
@@ -69,11 +70,21 @@ export const calculateStandings = (teams, matches) => {
         if (team) {
           if (c.type === 'red') {
             team.redCards += 1;
-            team.foulPoints += 2;
+            team.foulPoints += 6;
           } else {
             team.yellowCards += 1;
-            team.foulPoints += 1;
+            team.foulPoints += 3;
           }
+        }
+      });
+    }
+
+    if (match.fouls && Array.isArray(match.fouls)) {
+      match.fouls.forEach(f => {
+        const team = standings.find(t => t.id === f.teamId);
+        if (team) {
+          team.fouls += 1;
+          team.foulPoints += 1;
         }
       });
     }
